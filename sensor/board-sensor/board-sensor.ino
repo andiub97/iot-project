@@ -3,6 +3,7 @@
 #include <Preferences.h>
 
 #include <PubSubClient.h>
+#include <HTTPClient.h>
 #include <ArduinoJson.h>
 
 #define WIFI_SSID "Xperia XZ2 Compact_8002"
@@ -17,6 +18,9 @@
 const char* ID_MQTT = "mosquitto";
 const char* BROKER_MQTT = "192.168.43.177";
 int BROKER_PORT = 1883;
+
+// HTTP Server
+String serverName = "http://192.168.43.177:8080";
 
 const char *topic = "sensor/change/";
 
@@ -39,8 +43,8 @@ DHT dht(DHTPIN, DHTTYPE);
 
 // Variables for JSON data switching
 unsigned long previousTime = millis(); // timestamp 
-char prot_mode = "1";
-char previous_prot = "1";
+char prot_mode = '1';
+char previous_prot = '1';
 char tmp;
 char PROTOCOL = '0';
 
@@ -131,7 +135,6 @@ void MQTTSetup(){
   MQTT.setServer(BROKER_MQTT, BROKER_PORT);
   MQTT.setCallback(callbackMQTT); // setup the callback for the client connection (MQTT) 
   while (!MQTT.connected()) {
-     Serial.printf("The client %s connects to the public mqtt broker\n", id.c_str());
      if (MQTT.connect("ESP32Client")) {
          Serial.println("Public emqx mqtt broker connected");
          MQTT.subscribe(sensor_change_vars); // change vars
@@ -313,12 +316,12 @@ void loop() {
     http.POST(String(rssi).c_str());
     http.POST(String(preferences.getDouble("lat")).c_str());
     http.POST(String(preferences.getDouble("long")).c_str());
-    http.POST(String(analogSensor).c_str());
+    http.POST(String(gas_current_value).c_str());
     if(AQI != -1){
       http.POST(String(AQI).c_str());
       AQI = -1;
     }
-    server.Process();  
+    http.end();
     
   } else{
     // no valid protocol, we can't do nothing until the sensor administrator does not digit a correct mode
