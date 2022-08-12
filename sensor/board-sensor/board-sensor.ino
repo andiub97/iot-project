@@ -27,7 +27,14 @@ const char *topic = "sensor/change/";
 // ----------- Topics -----------
 const char *sensor_change_vars = "sensor/change/vars"; // setup topic to change metadata
 const char *sensor_change_prot = "sensor/change/prot"; // richiesta di switching di protocollo
-const char *sensor_data = "sensor/data";
+
+const char *sensor_data_temp = "sensor/data/temperature";
+const char *sensor_data_hum = "sensor/data/humidity";
+const char *sensor_data_rssi = "sensor/data/rssi";
+const char *sensor_data_lat = "sensor/data/latitude";
+const char *sensor_data_long = "sensor/data/longitude";
+const char *sensor_data_gas = "sensor/data/gas";
+const char *sensor_data_aqi = "sensor/data/aqi";
 
 // Digital pin connected to the DHT sensor
 #define DHTPIN 27
@@ -299,13 +306,15 @@ void loop() {
   if (prot_mode == '1'){
     Serial.println("Protocol: MQTT");
     // Publish an MQTT message on topic sensor/data
-    MQTT.publish(sensor_data, String(temp).c_str());
-    MQTT.publish(sensor_data, String(rssi).c_str());
-    MQTT.publish(sensor_data, String(preferences.getDouble("lat")).c_str());
-    MQTT.publish(sensor_data, String(preferences.getDouble("long")).c_str());
-    MQTT.publish(sensor_data, String(gas_current_value).c_str());
+    MQTT.publish(sensor_data_temp, String(temp).c_str());
+    MQTT.publish(sensor_data_hum, String(hum).c_str());
+    MQTT.publish(sensor_data_gas, String(gas_current_value).c_str());
+    MQTT.publish(sensor_data_rssi, String(rssi).c_str());
+    MQTT.publish(sensor_data_lat, String(preferences.getDouble("lat")).c_str());
+    MQTT.publish(sensor_data_long, String(preferences.getDouble("long")).c_str());
+
     if(AQI != -1){
-      MQTT.publish(sensor_data, String(AQI).c_str());
+      MQTT.publish(sensor_data_aqi, String(AQI).c_str());
       AQI = -1;
     }
 
@@ -313,10 +322,11 @@ void loop() {
   } else if(prot_mode == '2'){
     // Publish an MQTT message on topic esp32/dht/temperature
     http.POST(String(temp).c_str());
+    http.POST(String(hum).c_str());
+    http.POST(String(gas_current_value).c_str());
     http.POST(String(rssi).c_str());
     http.POST(String(preferences.getDouble("lat")).c_str());
     http.POST(String(preferences.getDouble("long")).c_str());
-    http.POST(String(gas_current_value).c_str());
     if(AQI != -1){
       http.POST(String(AQI).c_str());
       AQI = -1;
