@@ -20,7 +20,7 @@ const char* BROKER_MQTT = "192.168.43.177";
 int BROKER_PORT = 1883;
 
 // HTTP Server
-String serverName = "http://192.168.43.177:8080";
+String serverName = "http://192.168.43.177:8081";
 
 const char *topic = "sensor/change/";
 
@@ -53,7 +53,7 @@ unsigned long previousTime = millis(); // timestamp
 char prot_mode = '1';
 char previous_prot = '1';
 char tmp;
-char PROTOCOL = '0';
+int PROTOCOL = 0;
 
 // Variables to hold sensor readings
 float temp;
@@ -71,15 +71,12 @@ float gas_avg = 0; //gas avg during AQI computation
 unsigned long previousMillis = 0;   // Stores last time temperature was published
 const long interval = 5000;        // Interval at which to publish sensor readings
 
+// MQTT Credentials
+const char *mqtt_username = "diubi";
+const char *mqtt_password = "diubi";
 WiFiClient client;
 PubSubClient MQTT(client);  
 HTTPClient http;
-
-void connectToWifi() {
-  delay(10);
-  Serial.println("Connecting to Wi-Fi...");
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-}
 
 // -----------------MQTT functions-------------------------------------- 
 void callbackMQTT(char *topic, byte *payload, unsigned int length) {
@@ -97,14 +94,15 @@ void callbackMQTT(char *topic, byte *payload, unsigned int length) {
       StaticJsonDocument<100> docSwitch;
       DeserializationError err = deserializeJson(docSwitch, bufferfreq);
        
-     Serial.println("---------------");        
-      int prot = docSwitch["protocol"];
-      PROTOCOL = prot;
-      if( PROTOCOL == '0'){
+     Serial.println("---------------");
+     Serial.println("change protocol");     
+      PROTOCOL = docSwitch["protocol"];
+      Serial.println(PROTOCOL);
+      if( PROTOCOL == 0){
         previous_prot = prot_mode;
         prot_mode = '1';
         MQTT.publish(sensor_change_prot, "switch to MQTT");  
-      }else if(PROTOCOL == '1'){
+      }else if(PROTOCOL == 1){
         previous_prot = prot_mode;
         prot_mode = '2';      
         MQTT.publish(sensor_change_prot, "switch to HTTP");
@@ -142,10 +140,10 @@ void MQTTSetup(){
   MQTT.setServer(BROKER_MQTT, BROKER_PORT);
   MQTT.setCallback(callbackMQTT); // setup the callback for the client connection (MQTT) 
   while (!MQTT.connected()) {
-     if (MQTT.connect("ESP32Client")) {
+     if (MQTT.connect("ESP32Client", mqtt_username, mqtt_password)) {
          Serial.println("Public emqx mqtt broker connected");
-         MQTT.subscribe(sensor_change_vars); // change vars
-         MQTT.subscribe(sensor_change_prot); // change prot 
+         MQTT.subscribe("sensor/change/prot"); // change vars
+         //MQTT.subscribe(sensor_change_prot); // change prot 
          
      } else {
          // connection error handler
@@ -176,7 +174,7 @@ void HTTPSetup() {
 }
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(19200);
   pinMode(MQ2PIN, INPUT);
   preferences.begin("iot-app", false);
   preferences.putDouble("lat", 42.846290 );
@@ -185,12 +183,13 @@ void setup() {
 
   Serial.println("Connecting to ");
   Serial.println(WIFI_SSID);
-  connectToWifi();
-  while (WiFi.status() != WL_CONNECTED) 
-    {
-        delay(250);
-        Serial.print(".");
-    }
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  WiFi.mode(WIFI_STA); // station mode
+  Serial.print("Connecting to WiFi..");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(5000);
+    Serial.print(".");
+  }
   Serial.println("");
   Serial.println("WiFi connected");
 
@@ -203,10 +202,11 @@ void reconnectMQTT(void)
     while (!MQTT.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (MQTT.connect("ESP32Client")) {
+    if (MQTT.connect("ESP32Client",mqtt_username, mqtt_password)) {
       Serial.println("connected");
+      delay(5000);
       // Subscribe
-      MQTT.subscribe("esp32/output");
+      MQTT.subscribe(sensor_change_prot);
     } else {
       Serial.print("failed, rc=");
       Serial.println(" try again in 5 seconds");
@@ -216,19 +216,28 @@ void reconnectMQTT(void)
   }
 }
 
-void loop() {
+void loop() {  
+
+
+  if(!MQTT.connected()){
+    reconnectMQTT();
+  }
 
   MQTT.loop();
   
-  if(WiFi.status()== WL_CONNECTED){
-
-    reconnectMQTT();
-  }
+  if(WiFi.status() != WL_CONNECTED){
+      WiFi.reconnect();
+      while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+      }
+      Serial.println("WiFi reconnect");
+    }
   unsigned long currentMillis = millis();
   // Every X number of seconds (interval = 10 seconds) 
   // it publishes a new MQTT message
     if (currentMillis - previousMillis >= SAMPLE_FREQUENCY) {
-      // Save the last time a new reading was published
+//      // Save the last time a new reading was published
       previousMillis = currentMillis;
     
     tmp = Serial.read();
@@ -321,6 +330,7 @@ void loop() {
     
   } else if(prot_mode == '2'){
     // Publish an MQTT message on topic esp32/dht/temperature
+    Serial.println("Protocol: HTTP");
     http.POST(String(temp).c_str());
     http.POST(String(hum).c_str());
     http.POST(String(gas_current_value).c_str());
@@ -331,7 +341,7 @@ void loop() {
       http.POST(String(AQI).c_str());
       AQI = -1;
     }
-    http.end();
+    //http.end();
     
   } else{
     // no valid protocol, we can't do nothing until the sensor administrator does not digit a correct mode
@@ -342,6 +352,7 @@ void loop() {
   // customized delay based on the runtime setup
   if(prot_mode!='2')delay(SAMPLE_FREQUENCY);
 
-    MQTT.loop();
+
   }
+    MQTT.loop();  
 }
