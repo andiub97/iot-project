@@ -1,6 +1,6 @@
 const { json } = require('express/lib/response')
 const mqtt = require('mqtt')
-const influx = require('../influxdb/InfluxManager')
+//const influx = require('../influxdb/InfluxManager')
 const http = require('http')
 // Server session variables
 var idValues = []
@@ -12,26 +12,35 @@ const connectUrl = `mqtt://${hostMqtt}:${portMqtt}` // url for connection
 
 // connection on Mosquitto broker
 var client = null
-const setupTopic = "sensor/1175/setup" // setup ESP32 metadata
-const topicMqtt = 'sensor/1175/data' // listener MQTT topic for the topic 
-const switchTopic = "sensor/1175/switchRequest" // switch response channel to swap from CoAP to MQTT or vice versa
-const switchResponse = "sensor/1175/switch" // sender channel to swap protocols
+
+const sensor_data_temp = "sensor/data/temperature";
+const sensor_data_hum = "sensor/data/humidity";
+const sensor_data_rssi = "sensor/data/rssi";
+const sensor_data_lat = "sensor/data/latitude";
+const sensor_data_long = "sensor/data/longitude";
+const sensor_data_gas = "sensor/data/gas";
+const sensor_data_aqi = "sensor/data/aqi";
+const sensor_data_all = "sensor/data/.*"
+
+const switchTopic = "sensor/change/prot" // switch response channel to swap from CoAP to MQTT or vice versa
+// const switchResponse = "sensor/change/prot" // sender channel to swap protocols
+const changeVars = "sensor/change/vars";
+
+var sensor = {} // JSON with elements of the session (pushed to the dashboard)
 
 // ---------- Functions for MQTT -----------
 init = () => {
     client = mqtt.connect(connectUrl, {
         clientId,
+        username: 'diubi',
+        password: 'diubi',
         clean: true,
-        connectTimeout: 4000,
-        username: 'iot2020',
-        password: 'mqtt2020*',
         reconnectPeriod: 1000,
     })
 
     // reference name topic :-> name
     references = {}
 
-    // topic setup
 
     // mqtt handler
     client.on('connect', () => {
@@ -39,153 +48,100 @@ init = () => {
         console.log('---------------------')
         console.log('MQTT Subscriptions: ')
         try {
-            client.subscribe(topicMqtt) // 
-            client.subscribe(consumerTestMqtt) // for testing mode on MQTT sensors receiving the response
-            client.subscribe(switchResponse) // for a case of response in switchMode or manual setting on the sensor
+            client.subscribe(sensor_data_temp)
+            client.subscribe(sensor_data_hum)
+            client.subscribe(sensor_data_rssi)
+            client.subscribe(sensor_data_lat)
+            client.subscribe(sensor_data_long)
+            client.subscribe(sensor_data_gas)
+            client.subscribe(sensor_data_aqi)
+            client.subscribe(switchTopic)
         } catch (e) {
             console.log('MQTT Error: ' + e)
         }
-        console.log('Subscription to', topicMqtt + ' : Success')
+        console.log('Subscription to ', sensor_data_temp + ' : Success')
+        console.log('Subscription to ', sensor_data_hum + '  : Success')
+        console.log('Subscription to ', sensor_data_rssi + ' : Success')
+        console.log('Subscription to ', sensor_data_lat + '  : Success')
+        console.log('Subscription to ', sensor_data_long + ' : Success')
+        console.log('Subscription to ', sensor_data_gas + '  : Success')
+        console.log('Subscription to ', sensor_data_aqi + '  : Success')
+        console.log('Subscription to ', switchTopic + '  : Success')
         console.log('---------------------')
     })
 
 
     client.on('message', (topic, payload) => {
-        if (topic == topicMqtt) {
-            console.log('MQTT: Trigger message on ' + topicMqtt)
+        if (topic == sensor_data_temp) {
+            console.log('MQTT: Trigger message on ' + topic)
             data = JSON.parse(payload.toString()) // stringify is used for different encoding string
+            console.log(data);
             processJSON(data)
-        }
+        } else if (topic == sensor_data_hum) {
+            console.log('MQTT: Trigger message on ' + topic)
+            data = JSON.parse(payload.toString()) // stringify is used for different encoding string
+            console.log(data);
+            processJSON(data)
+        } else if (topic == sensor_data_gas) {
+            console.log('MQTT: Trigger message on ' + topic)
+            data = JSON.parse(payload.toString()) // stringify is used for different encoding string
+            console.log(data);
+            processJSON(data)
+        } else if (topic == sensor_data_lat) {
+            console.log('MQTT: Trigger message on ' + topic)
+            data = JSON.parse(payload.toString()) // stringify is used for different encoding string
+            console.log(data);
+            processJSON(data)
+        } else if (topic == sensor_data_long) {
+            console.log('MQTT: Trigger message on ' + topic)
+            data = JSON.parse(payload.toString()) // stringify is used for different encoding string
+            console.log(data);
+            processJSON(data)
+        } else if (topic == sensor_data_gas) {
+            console.log('MQTT: Trigger message on ' + topic)
+            data = JSON.parse(payload.toString()) // stringify is used for different encoding string
+            console.log(data);
+            processJSON(data)
+        } else if (topic == sensor_data_aqi) {
+            console.log('MQTT: Trigger message on ' + topic)
+            data = JSON.parse(payload.toString()) // stringify is used for different encoding string
+            console.log(data);
+            processJSON(data)
+        } else if (topic == switchTopic) {
+            console.log('MQTT: Trigger message on ' + switchTopic)
+            //data = JSON.parse(payload.toString('utf-8'))
 
-        if (topic == consumerTestMqtt) {
-            console.log('MQTT: Trigger message on ' + consumerTestMqtt)
-            try {
-                data = JSON.parse(payload.toString())
-                console.log(data)
-                isPresent = false
-                id = data.id
-                if (checkId(id)) {
-                    sensors[id]['mqtt'] = data.time
-                    isPresent = true
-                }
+            // id = data.id
+            // if (checkId(id)) {
+            //     sensors[id]['protocol'] = data.protocol
+            //     isPresent = true
+            // }
 
-                if (isPresent) {
-                    console.log('MQTT: Testing response for sensor: ' + data.id + "\nSaved in session.")
-
-                } else {
-                    console.log('MQTT: Sensor not in session during invoking of ' + consumerTestMqtt + ' for sensor ' + data.id)
-
-                }
-            } catch (e) {
-                console.log('MQTT: Wrong formatting on ' + consumerTestMqtt + ' for sensor ' + data.id)
-            }
-        }
-
-        if (topic == switchResponse) {
-            console.log('MQTT: Trigger message on ' + switchResponse)
-            data = JSON.parse(payload.toString())
-            isPresent = false
-            id = data.id
-            if (checkId(id)) {
-                sensors[id]['protocol'] = data.protocol
-                isPresent = true
-            }
-
-            if (isPresent) {
-                console.log('MQTT: Switch response for sensor: ' + id + "\nSaved in session.")
-            } else {
-                console.log('MQTT: Sensor not in session during invoking of ' + switchResponse + ' for sensor ' + data.id)
-            }
+            // if (isPresent) {
+            //     console.log('MQTT: Switch response for sensor: ' + id + "\nSaved in session.")
+            // } else {
+            //     console.log('MQTT: Sensor not in session during invoking of ' + switchResponse + ' for sensor ' + data.id)
+            // }
         }
     })
 }
 
 const switchMode = (request, response) => {
     console.log('Invoke Switching Mode...')
-    let id = request.body.id
-    let protocol = request.body.protocol
-    let ip = request.body.ip
 
-    if (protocol == 0 || protocol == 1) {
+    let prot = request.body.protocol
+    console.log(prot);
+
+    if (prot == 0 || prot == 1) {
         var switched;
-        if (protocol == 0) {
+        if (prot == 0) {
             switched = 1
-            requestCoAP[id] = setInterval(() => {
-                if (sensors[id] != undefined) {
-                    if (sensors[id]['protocol'] == 1) {
-                        console.log('Send request.')
-                        const req = coap.request('coap://' + sensors[id]['ip'] + '/data', { observe: true })
-                        if (sensors[id]['mode'] != undefined && sensors[id]['mode'] == 1) {
-                            // we are in the testing mode for the coap sensor
-                            if (sensors[id]['counterTest'] == undefined) {
-                                // first request
-                                sensors[id]['numPackage'] = 1
-                                sensors[id]['counterTest'] = 0
-                                sensors[id]['packagesTime'] = Date.now()
-                                sensors[id]['testingParams'] = [0, 0, 0, 0, 0] // list of time in the response
-                                sensors[id]['testingParams'][sensors[id]['counterTest']] = Date.now() // first request, got the first response
-                            } else {
-                                // other requests
-                                sensors[id]['numPackage'] += 1
-                                sensors[id]['testingParams'][sensors[id]['counterTest']] = Date.now() // last request for response i
-
-                            }
-                        }
-                        req.on('response', (res) => {
-                            now = Date.now()
-                            processJSON(JSON.parse(res.payload.toString()))
-                            if (sensors[id]['mode'] != undefined && sensors[id]['mode'] == 1) {
-                                if (sensors[id]['counterTest'] != undefined && sensors[id]['testingParams'] != undefined &&
-                                    sensors[id]['counterTest'] < 5 && sensors[id]['mode'] != undefined && sensors[id]['mode'] == 1) {
-                                    sensors[id]['testingParams'][sensors[id]['counterTest']] = now - sensors[id]['testingParams'][sensors[id]['counterTest']]
-                                    sensors[id]['counterTest'] = sensors[id]['counterTest'] + 1 // 1 to n 
-
-                                } else if (sensors[id]['counterTest'] != undefined && sensors[id]['testingParams'] != undefined && sensors[id]['counterTest'] == 5) {
-                                    let numPackage = sensors[id]['numPackage']
-                                    sensors[id]['testingParams'][sensors[id]['counterTest']] = now - sensors[id]['testingParams'][sensors[id]['counterTest']]
-                                    sensors[id]['counterTest'] = undefined
-                                    sensors[id]['packageTime'] = undefined
-                                    sensors[id]['numPackage'] = undefined
-                                    let array = sensors[id]['testingParams']
-                                    let sum = 0
-                                    for (let i = 0; i < array.length; i++) {
-                                        sum += array[i]
-                                    }
-                                    sensors[id]['coap'] = Math.floor(sum / 5)
-                                    console.log('Package sent: ' + numPackage)
-                                    console.log('Package received: 5')
-                                    sensors[id]['packageLossCoAP'] = 100 - Math.round(5 * 100 / numPackage, 2)
-                                    console.log('Latency on communication: ' + sensors[id]['coap'])
-                                    console.log('CoAP Loss Package: ' + sensors[id]['packageLossCoAP'] + " %")
-                                    sensors[id]['mode'] = 0
-                                }
-
-                            }
-                            res.on('end', () => {
-                                //
-                            })
-                        })
-
-                        req.on('error', (e) => {
-                            // do nothing
-                        })
-                        req.end()
-                    }
-                }
-            }, sensors[id]['sampleFrequency'])
-
         } else {
             switched = 0
-            clearInterval(requestCoAP[id])
-            requestCoAP[id] = undefined
         }
-
         // get data from the body
         let json = {
-            id: id,
-            ip: ip,
             protocol: switched,
-            sampleFrequency: sensors[id]['sampleFrequency']
         }
 
         // publish data on sensors network
@@ -200,15 +156,70 @@ const switchMode = (request, response) => {
         console.log('Switch Mode: Error, protocol value are not acceptable.')
         response.status(500).json(json)
     }
-    // update sensor session data
-    if (checkId(id)) {
-        sensors[id]['protocol'] = switched
-    }
     // send response
     response.status(200).json(json)
 }
 
 
+const updateSetup = (request, response) => {
+    console.log('HTTP: Update data received...')
+    console.log('-----------------------------')
+    const data = {
+        minGas: request.body.maxGas, // inverted related to data domain
+        maxGas: request.body.minGas, // inverted related to data domain
+        sampleFrequency: request.body.sampleFrequency,
+    }
+
+
+    if (request.body.sampleFrequency < 5000) {
+        sensor['sampleFrequency'] = 5000
+    } else {
+        sensor['sampleFrequency'] = request.body.sampleFrequency
+    }
+
+    // check data
+
+    if (data.minGas > data.maxGas || (data.sampleFrequency == undefined || data.sampleFrequency == null || data.sampleFrequency < 5000)) {
+        console.log('HTTP Error: Invalid values received.')
+        response.json({ status: 400 })
+        console.log('-----------------------------')
+    }
+
+    else {
+
+        if (data.minGas != undefined && data.minGas != null) {
+            console.log('HTTP: Received MIN_GAS_VALUE from the dashboard: ' + data.maxGas)
+        } else {
+            data.minGas = -1;
+        }
+
+        if (data.maxGas != undefined && data.maxGas != null) {
+            console.log('HTTP: Received MAX_GAS_VALUE from the dashboard: ' + data.maxGas)
+        } else {
+            data.maxGas = -1
+        }
+
+        if (data.sampleFrequency != undefined && data.sampleFrequency != null) {
+            console.log('HTTP: Received SAMPLE_FREQUENCY from the dashboard: ' + data.sampleFrequency)
+        } else {
+            data.sampleFrequency = -1
+        }
+
+        if (data.sampleFrequency != undefined && data.sampleFrequency > 0 && data.sampleFrequency != null) {
+            id = data.id
+
+            console.log('-----------------------------')
+            success = forwardData(data) // forward on MQTT channels
+            if (!success) {
+                console.log('Error during publishing setup data')
+            }
+        }
+    }
+    response.status(200).json(sensor)
+}
+
+const getProtocol = (request, response) => {
+}
 /**
  * forwardData(request, response) forwards the setup information to sensor via MQTT
  * @param data is not considered
@@ -222,7 +233,7 @@ forwardData = (data) => {
     console.log(data)
 
     client.publish(
-        setupTopic,
+        changeVars,
         JSON.stringify(data),
         { qos: 1, retain: true },
         (e) => {
@@ -237,9 +248,99 @@ forwardData = (data) => {
 }
 
 
+const processJSON = (data) => {
+
+    sensor = {
+        protocol: data['protocol'], // protocol
+        sampleFrequency: data['samF'], // current sample frequency
+        lastTime: Date.now(), // timestamp for the testing phase in ms
+        timestamp: Date.now(), // is equal in timestamp of the server
+        status: 1, // 1 connected, 0 disconnected
+    }
+
+    // update values
+    sensor['protocol'] = data['protocol']
+    if (sensor['sampleFrequency'] != data['samF']) {
+        request.get(
+            'http://localhost:5000/changeFreq/' + data['samF'],
+            { json: {} },
+            function (error, response, body) {
+                if (!error && response.statusCode == 200) {
+                    // given data in the body, we want to add them in the next datetime according to the sensor sample frequency
+                    console.log('FLASK: Changed sample frequency with frequency at ' + data['samF'])
+                }
+            }
+        );
+    }
+    sensor['sampleFrequency'] = data['samF']
+    sensor['gps'] = data['gps']
+    sensor['timestamp'] = Date.now()
+
+
+
+
+
+
+
+    // Write on InfluxDB
+    // const influxId = data['id']
+    // const gps = data['gps']
+    // for (const [key, value] of Object.entries(InfluxData.buckets)) {
+    //     if (key == "temp" || key == "gas" || key == "hum") {
+    //         console.log('Forecast: Sending request to: ' + 'http://localhost:5000/forecast/' + predLen + '/' + idJSON + "/" + key + "/" + sensors[idJSON]['sampleFrequency'])
+    //         request.get(
+    //             'http://localhost:5000/forecast/' + predLen + '/' + idJSON + "/" + key + "/" + sensors[idJSON]['sampleFrequency'],
+    //             { json: {} },
+    //             function (error, response, body) {
+    //                 if (!error && response.statusCode == 200) {
+    //                     // given data in the body, we want to add them in the next datetime according to the sensor sample frequency
+    //                     influxManager.writeForecastApi(influxId, gps, body, value, sensors[idJSON]['sampleFrequency'])
+    //                 }
+    //             }
+    //         );
+    //     }
+    //     switch (value) {
+    //         case "temperature": influxManager.writeApi(influxId, gps, value, data['temp'])
+    //             break;
+    //         case "humidity": influxManager.writeApi(influxId, gps, value, data['hum'])
+    //             break;
+    //         case "gas": influxManager.writeApi(influxId, gps, value, data['gasv']['gas'])
+    //             break;
+    //         case "aqi": influxManager.writeApi(influxId, gps, value, data['gasv']['AQI'])
+    //             break;
+    //         case "rss": influxManager.writeApi(influxId, gps, value, data['rss'])
+    //             break;
+    //         default:
+    //             break;
+    //     }
+    // }
+
+    // Adding external temperature
+    // let latitude = data.gps.lat
+    // let longitude = data.gps.lng
+    // var url = `http://api.openweathermap.org/data/2.5/weather?`
+    //     + `lat=${latitude}&lon=${longitude}&appid=${API_WEATHER_KEY}`
+    // request({ url: url, json: true }, function (error, response) {
+    //     if (error) {
+    //         console.log('METEO-STAT: Unable to connect to Forecast API');
+    //     }
+    //     else {
+    //         let temp = Math.round(response.body.main.temp - 273.15, 2) // convert in celsius
+    //         let bucket = InfluxData.buckets.tempout
+    //         influxManager.writeApi(influxId, gps, bucket, temp)
+    //     }
+    // })
+
+    // console.log('---------------------')
+
+}
+
+
 // module export 
 module.exports = {
 
+    processJSON,
+    updateSetup,
     switchMode,
     init,
 
