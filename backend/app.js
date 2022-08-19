@@ -9,20 +9,16 @@
 const express = require('express')
 const http = require('http')
 const mqtt_prot = require('./mqtt-protocol')
-const path = require('path');
-const os = require('os')
-
+const bodyParser = require('body-parser')
 
 // --------- MQTT setup -------------
 mqtt_prot.init()
 
-const netInterface = os.networkInterfaces();
-var resultsNet = {}
 
 // ----- Express setup -----
 
 const portHttp = 8080
-const portSocket = 2000
+const host = '127.0.0.1'
 const app = express()
 
 // bodyParser for POST
@@ -43,28 +39,27 @@ app.use(express.static(__dirname + "/public", {
 
 // Http API
 // default API for setup tool
-app.get("/", (request, response) => {
-    response.sendFile(path.join(__dirname, '../frontend/dashboard.html'));
-})
+// app.get("/", (request, response) => {
+//     response.sendFile(path.join(__dirname, '../frontend/dashboard.html'));
+// })
 
-app.get('/map', (request, response) => {
-    response.sendFile(path.join(__dirname, '../frontend/map.html'))
-})
+// app.get('/map', (request, response) => {
+//     response.sendFile(path.join(__dirname, '../frontend/map.html'))
+// })
 
-// Retrieve connected sensors ids
-app.get('/get-sensor-data', protocols.getSensorData)
+// // Retrieve connected sensors ids
+// 
+// // updating prediction length for forecasting 
+// app.post('/updatePredLen', protocols.updatePredLen)
 
-// updating prediction length for forecasting 
-app.post('/updatePredLen', protocols.updatePredLen)
+// // register a new node as a device for the IoT network
+// app.post('/registerModel', protocols.registerModel)
 
-// register a new node as a device for the IoT network
-app.post('/registerModel', protocols.registerModel)
-
-// register a new node as a device for the IoT network
-app.post('/registerNode', protocols.registerNode)
+// // register a new node as a device for the IoT network
+// app.post('/registerNode', protocols.registerNode)
 
 // update data for sensor via http protocol
-app.post('/update-setup', protocols.updateSetup)
+app.post('/update-setup', mqtt_prot.updateSetup)
 
 // switch mode
 app.post('/switch-mode', mqtt_prot.switchMode)
@@ -72,4 +67,32 @@ app.post('/switch-mode', mqtt_prot.switchMode)
 // listening on http
 app.listen(portHttp, host, () => {
     console.log(`Listening in HTTP  on ${host}:${portHttp}.`)
+
+})
+
+
+const data = JSON.stringify({
+    protocol: 0,
+});
+
+const options = {
+    host: '127.0.0.1',
+    port: 8080,
+    path: '/switch-mode',
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': data.length,
+    },
+};
+
+const req = http.request(options, res => {
+    console.log(`statusCode: ${res.statusCode}`);
+
+    res.on('data', function (chunk) {
+        console.log('Response: ' + chunk + '\n');
+    });
+
+    req.write(data);
+    req.end();
 })
