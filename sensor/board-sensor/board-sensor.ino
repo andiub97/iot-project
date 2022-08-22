@@ -28,7 +28,7 @@ const char *mqtt_username = "diubi";
 const char *mqtt_password = "diubi";
 
 // HTTP Server
-String serverName = "http://192.168.43.177:8080";
+String serverName = "http://192.168.43.177:8080/data";
 
 // ----------- Topics -----------
 const char *sensor_change_vars = "sensor/change/vars"; // setup topic to change metadata
