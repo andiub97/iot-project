@@ -8,11 +8,11 @@
 // -------- Dependencies --------
 const express = require('express')
 const http = require('http')
-const mqtt_prot = require('./mqtt-protocol')
+const prots = require('./protocols')
 const bodyParser = require('body-parser')
 
 // --------- MQTT setup -------------
-mqtt_prot.init()
+prots.init()
 
 
 // ----- Express setup -----
@@ -29,6 +29,8 @@ app.use(
     })
 )
 
+http.createServer(app).listen(8080)
+
 // static directory used to the app
 app.use(express.static(__dirname + "/public", {
     index: false,  // no index
@@ -37,37 +39,28 @@ app.use(express.static(__dirname + "/public", {
     maxAge: "30d" // death time
 }));
 
-// Http API
-// default API for setup tool
-// app.get("/", (request, response) => {
-//     response.sendFile(path.join(__dirname, '../frontend/dashboard.html'));
-// })
-
-// app.get('/map', (request, response) => {
-//     response.sendFile(path.join(__dirname, '../frontend/map.html'))
-// })
-
-// // Retrieve connected sensors ids
-// 
-// // updating prediction length for forecasting 
-// app.post('/updatePredLen', protocols.updatePredLen)
-
-// // register a new node as a device for the IoT network
-// app.post('/registerModel', protocols.registerModel)
-
-// // register a new node as a device for the IoT network
-// app.post('/registerNode', protocols.registerNode)
-
 // update data for sensor via http protocol
-app.post('/update-setup', mqtt_prot.updateSetup)
+app.post('/update-setup', prots.updateSetup)
 
 // switch mode
-app.post('/switch-mode', mqtt_prot.switchMode)
+app.post('/switch-mode', prots.switchMode)
+
+app.post('/data', function (req, res) {
+
+    let data = '';
+    req.on('data', chunk => {
+        data += chunk;
+    });
+    req.on('end', () => {
+        console.log(data);
+        res.end();
+    });
+})
+
 
 // listening on http
 app.listen(portHttp, host, () => {
     console.log(`Listening in HTTP  on ${host}:${portHttp}.`)
-
 })
 
 
