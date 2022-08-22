@@ -138,7 +138,6 @@ void callbackMQTT(char *topic, byte *payload, unsigned int length) {
 void MQTTSetup(){
   MQTT.setServer(BROKER_MQTT, BROKER_PORT);
   MQTT.setCallback(callbackMQTT); // setup the callback for the client connection (MQTT) 
-  MQTT.setKeepAlive( 90 );
   while (!MQTT.connected()) {
      if (MQTT.connect(String("ESP32Client").c_str(), mqtt_username, mqtt_password)) {
          Serial.println("Public emqx mqtt broker connected");
@@ -179,27 +178,29 @@ void setup() {
 
 void reconnectMQTT(void)                   
 {
-  MQTT.setServer(BROKER_MQTT, BROKER_PORT);
-  MQTT.setCallback(callbackMQTT); // setup the callback for the client connection (MQTT) 
-  MQTT.setKeepAlive(90);
     while (!MQTT.connected()) {
-     if (MQTT.connect(String("ESP32Client").c_str(), mqtt_username, mqtt_password)) {
-         Serial.println("Public emqx mqtt broker connected");
-         MQTT.subscribe(sensor_change_prot); // change prot 
-     } else {
-         // connection error handler
-         Serial.print("failed with state ");
-         Serial.print(MQTT.state());
-         delay(2000);
-     }
+      
+      MQTT.disconnect();
+      MQTT.connect(String("ESP32Client").c_str(), mqtt_username, mqtt_password);
+      MQTT.setServer(BROKER_MQTT, BROKER_PORT);
+      MQTT.setCallback(callbackMQTT); // setup the callback for the client connection (MQTT) 
+      Serial.println("Public emqx mqtt broker connected");
+      
+      MQTT.subscribe(sensor_change_prot); // change prot 
+      delay(2000);
     }
 }
 
 
 void loop() {
-  
+
+  if(!MQTT.connected()){
+    reconnectMQTT();
+  }
+    Serial.println("stampa1");
     MQTT.loop();
-  
+    Serial.println("stampa2");
+
 //  unsigned long currentMillis = millis();
   // Every X number of seconds (interval = 10 seconds) 
   // it publishes a new MQTT message
@@ -314,10 +315,11 @@ void loop() {
 //    }
     http.end();
     
-    if(!MQTT.connected()){
-      reconnectMQTT();
-    }
+    reconnectMQTT();
+    MQTT.loop();
     MQTT.publish(sensor_data_temp, String(temp).c_str());
+    delay(10000);
+    
   } else{
     // no valid protocol, we can't do nothing until the sensor administrator does not digit a correct mode
     Serial.println("Invalid Protocol Value: Digit 1 for MQTT or 2 for CoAP");
