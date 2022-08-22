@@ -2,7 +2,6 @@ const http = require('http');
 
 const portHttp = 8081
 const host = '127.0.0.1'
-const http_server = express()
 
 // app.use(express.static(__dirname + "/public", {
 //     index: false,  // no index
