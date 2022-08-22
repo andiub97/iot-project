@@ -165,8 +165,8 @@ const updateSetup = (request, response) => {
     console.log('HTTP: Update data received...')
     console.log('-----------------------------')
     const data = {
-        minGas: request.body.maxGas, // inverted related to data domain
-        maxGas: request.body.minGas, // inverted related to data domain
+        minGas: request.body.minGas, // inverted related to data domain
+        maxGas: request.body.maxGas, // inverted related to data domain
         sampleFrequency: request.body.sampleFrequency,
     }
 
