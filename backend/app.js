@@ -71,28 +71,3 @@ app.listen(portHttp, host, () => {
 })
 
 
-const data = JSON.stringify({
-    protocol: 0,
-});
-
-const options = {
-    host: '127.0.0.1',
-    port: 8080,
-    path: '/switch-mode',
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': data.length,
-    },
-};
-
-const req = http.request(options, res => {
-    console.log(`statusCode: ${res.statusCode}`);
-
-    res.on('data', function (chunk) {
-        console.log('Response: ' + chunk + '\n');
-    });
-
-    req.write(data);
-    req.end();
-})
