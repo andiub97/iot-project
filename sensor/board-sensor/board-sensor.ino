@@ -40,6 +40,7 @@ const char *sensor_data_lat = "sensor/data/latitude";
 const char *sensor_data_long = "sensor/data/longitude";
 const char *sensor_data_gas = "sensor/data/gas";
 const char *sensor_data_aqi = "sensor/data/aqi";
+const char *sensor_data_all = "data";
 
 // Initialize DHT sensor
 DHT dht(DHTPIN, DHTTYPE);
@@ -48,6 +49,10 @@ DHT dht(DHTPIN, DHTTYPE);
 unsigned long previousTime = millis(); // timestamp
 char prot_mode = '1';
 int PROTOCOL = 0;
+const int capacity = JSON_OBJECT_SIZE(192); // capacity size
+StaticJsonDocument<capacity> doc; // Json for data communication
+char buffer_ff[sizeof(doc)]; // buffer for JSON message for CoAP and MQTT payload
+
 
 // Variables to hold sensor readings
 float temp;
@@ -282,24 +287,29 @@ void loop() {
       http.begin(clientHTTP, serverName);
 
       // Setting header content type: text/plain
-      http.addHeader("Content-Type", "text/plain");
+      http.addHeader("Content-Type", "application/json");
 
       // Send sensor data in post requests
-      http.POST(String(temp).c_str());
-      http.POST(String(hum).c_str());
-      http.POST(String(gas_current_value).c_str());
-      http.POST(String(rssi).c_str());
-      http.POST(String(preferences.getDouble("lat")).c_str());
-      http.POST(String(preferences.getDouble("long")).c_str());
+      doc["gps"]["lat"] = preferences.getDouble("lat");
+      doc["gps"]["lng"] = preferences.getDouble("long");
+      doc["rss"] = rssi;
+      doc["temp"] = temp;
+      doc["hum"] = hum;
+      doc["gasv"]["gas"] = gas_current_value;
+
       if (AQI != -1) {
-        http.POST(String(AQI).c_str());
+        doc["gasv"]["AQI"] = AQI;
         AQI = -1;
       }
+      serializeJson(doc, buffer_ff);
+      Serial.println(buffer_ff);
+      http.POST(buffer_ff);
+
       http.end();
     }
-    
-    if(prot_mode!='2')Serial.println("--------------------------");
+
+    if (prot_mode != '2')Serial.println("--------------------------");
     // customized delay based on the runtime setup
-    if(prot_mode!='2')delay(SAMPLE_FREQUENCY);
+    if (prot_mode != '2')delay(SAMPLE_FREQUENCY);
   }
 }
