@@ -10,7 +10,7 @@ const express = require('express')
 const http = require('http')
 const prots = require('./protocols')
 const bodyParser = require('body-parser')
-
+const influx = require('../influxdb/InfluxManager')
 // --------- MQTT setup -------------
 prots.init()
 
@@ -20,6 +20,9 @@ prots.init()
 const portHttp = 8080
 const host = '127.0.0.1'
 const app = express()
+
+const influxManager = new influx.InfluxManager(InfluxData.host, InfluxData.port, InfluxData.token, InfluxData.org)
+
 
 // bodyParser for POST
 app.use(bodyParser.json())
@@ -47,20 +50,12 @@ app.post('/switch-mode', prots.switchMode)
 
 app.post('/data', function (req, res) {
 
-    let data = '';
-    req.on('data', chunk => {
-        data += chunk;
-    });
-    req.on('end', () => {
-        console.log(data);
-        res.end();
-    });
-})
+    console.log(req.body)
 
+
+})
 
 // listening on http
 app.listen(portHttp, host, () => {
     console.log(`Listening in HTTP  on ${host}:${portHttp}.`)
 })
-
-
