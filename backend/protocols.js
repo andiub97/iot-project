@@ -1,6 +1,6 @@
 const { json } = require('express/lib/response')
 const mqtt = require('mqtt')
-//const influx = require('../influxdb/InfluxManager')
+const influx = require('../influxdb/InfluxManager')
 const http = require('http')
 // Server session variables
 var idValues = []
@@ -9,6 +9,25 @@ const hostMqtt = '192.168.43.177' // Broker Mosquitto
 const portMqtt = '1883' // listen port for MQTT
 const clientId = `proxy_${Math.random().toString(16).slice(3)}` // subscriber id
 const connectUrl = `mqtt://${hostMqtt}:${portMqtt}` // url for connection
+
+// ------ Influx Data and Manager Setup ------
+const InfluxData = {
+    token: 'XsaAgTTIvwmy0G9jrEMf2S2-hQfS2myED2PR_bEsZHoydrfol8qqE-Mnae63BxRDM8qsREHCGYrqsTz0zygdKQ==',
+    host: 'localhost',
+    org: 'iot-org',
+    port: 8086,
+    buckets: {
+        temp: 'temperature',
+        //   tempout: 'tempout',
+        aqi: 'aqi',
+        hum: 'humidity',
+        rss: 'rss',
+        gas: 'gas',
+    },
+}
+
+const influxManager = new influx.InfluxManager(InfluxData.host, InfluxData.port, InfluxData.token, InfluxData.org)
+
 
 // connection on Mosquitto broker
 var client = null
@@ -246,17 +265,6 @@ forwardData = (data) => {
     return true;
 }
 
-const httpData = (req, res) => {
-
-    let data = '';
-    req.on('data', chunk => {
-        data += chunk;
-    });
-    req.on('end', () => {
-        console.log(data);
-        res.end();
-    });
-}
 
 const processJSON = (data) => {
 
@@ -288,42 +296,38 @@ const processJSON = (data) => {
 
 
 
-
-
-
-
     // Write on InfluxDB
-    // const influxId = data['id']
-    // const gps = data['gps']
-    // for (const [key, value] of Object.entries(InfluxData.buckets)) {
-    //     if (key == "temp" || key == "gas" || key == "hum") {
-    //         console.log('Forecast: Sending request to: ' + 'http://localhost:5000/forecast/' + predLen + '/' + idJSON + "/" + key + "/" + sensors[idJSON]['sampleFrequency'])
-    //         request.get(
-    //             'http://localhost:5000/forecast/' + predLen + '/' + idJSON + "/" + key + "/" + sensors[idJSON]['sampleFrequency'],
-    //             { json: {} },
-    //             function (error, response, body) {
-    //                 if (!error && response.statusCode == 200) {
-    //                     // given data in the body, we want to add them in the next datetime according to the sensor sample frequency
-    //                     influxManager.writeForecastApi(influxId, gps, body, value, sensors[idJSON]['sampleFrequency'])
-    //                 }
-    //             }
-    //         );
-    //     }
-    //     switch (value) {
-    //         case "temperature": influxManager.writeApi(influxId, gps, value, data['temp'])
-    //             break;
-    //         case "humidity": influxManager.writeApi(influxId, gps, value, data['hum'])
-    //             break;
-    //         case "gas": influxManager.writeApi(influxId, gps, value, data['gasv']['gas'])
-    //             break;
-    //         case "aqi": influxManager.writeApi(influxId, gps, value, data['gasv']['AQI'])
-    //             break;
-    //         case "rss": influxManager.writeApi(influxId, gps, value, data['rss'])
-    //             break;
-    //         default:
-    //             break;
-    //     }
-    // }
+    const influxId = data['id']
+    const gps = data['gps']
+    for (const [key, value] of Object.entries(InfluxData.buckets)) {
+        if (key == "temp" || key == "gas" || key == "hum") {
+            console.log('Forecast: Sending request to: ' + 'http://localhost:5000/forecast/' + predLen + '/' + idJSON + "/" + key + "/" + sensors[idJSON]['sampleFrequency'])
+            request.get(
+                'http://localhost:5000/forecast/' + predLen + '/' + idJSON + "/" + key + "/" + sensors[idJSON]['sampleFrequency'],
+                { json: {} },
+                function (error, response, body) {
+                    if (!error && response.statusCode == 200) {
+                        // given data in the body, we want to add them in the next datetime according to the sensor sample frequency
+                        influxManager.writeForecastApi(influxId, gps, body, value, sensors[idJSON]['sampleFrequency'])
+                    }
+                }
+            );
+        }
+        switch (value) {
+            case "temperature": influxManager.writeApi(influxId, gps, value, data['temp'])
+                break;
+            case "humidity": influxManager.writeApi(influxId, gps, value, data['hum'])
+                break;
+            case "gas": influxManager.writeApi(influxId, gps, value, data['gasv']['gas'])
+                break;
+            case "aqi": influxManager.writeApi(influxId, gps, value, data['gasv']['AQI'])
+                break;
+            case "rss": influxManager.writeApi(influxId, gps, value, data['rss'])
+                break;
+            default:
+                break;
+        }
+    }
 
     // Adding external temperature
     // let latitude = data.gps.lat
@@ -352,7 +356,6 @@ module.exports = {
     processJSON,
     updateSetup,
     switchMode,
-    httpData,
     init,
 
 }
