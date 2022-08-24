@@ -302,7 +302,6 @@ void loop() {
         AQI = -1;
       }
       serializeJson(doc, buffer_ff);
-      Serial.println(buffer_ff);
       http.POST(buffer_ff);
 
       http.end();
