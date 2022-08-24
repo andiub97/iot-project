@@ -13,7 +13,7 @@ class InfluxManager {
 
     writeApi(clientId, gps, bucket, value) {
         const writeApi = this.client.getWriteApi(this.org, bucket)
-        writeApi.useDefaultTags({ prediction: "no", host: clientId.toString(), lat: gps.lat.toString(), lng: gps.lng.toString() })
+        writeApi.useDefaultTags({ prediction: "no", host, lat: gps.lat.toString(), lng: gps.lng.toString() })
         var point = new Point('val')
         if (bucket == undefined || value == null) {
             return false;
