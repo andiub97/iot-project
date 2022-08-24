@@ -1,24 +1,20 @@
 const { json } = require('express/lib/response')
 const mqtt = require('mqtt')
 const influx = require('../influxdb/InfluxManager')
-const http = require('http')
-// Server session variables
-var idValues = []
 
 const hostMqtt = '192.168.43.177' // Broker Mosquitto
 const portMqtt = '1883' // listen port for MQTT
-const clientId = `proxy_${Math.random().toString(16).slice(3)}` // subscriber id
+const clientId = `diubi-esp-32` // subscriber id
 const connectUrl = `mqtt://${hostMqtt}:${portMqtt}` // url for connection
 
 // ------ Influx Data and Manager Setup ------
 const InfluxData = {
-    token: 'XsaAgTTIvwmy0G9jrEMf2S2-hQfS2myED2PR_bEsZHoydrfol8qqE-Mnae63BxRDM8qsREHCGYrqsTz0zygdKQ==',
+    token: '0-boCREZ1XTzYhmT3RYogxFDtraRzOEZsMYNxjp0mBOWHCif47lUv2UddrAfyJUwupk33ci92-aHHFWhjv2pRg==',
     host: 'localhost',
-    org: 'iot-org',
+    org: 'iot_group',
     port: 8086,
     buckets: {
         temp: 'temperature',
-        //   tempout: 'tempout',
         aqi: 'aqi',
         hum: 'humidity',
         rss: 'rss',
@@ -39,13 +35,15 @@ const sensor_data_lat = "sensor/data/latitude";
 const sensor_data_long = "sensor/data/longitude";
 const sensor_data_gas = "sensor/data/gas";
 const sensor_data_aqi = "sensor/data/aqi";
-const sensor_data_all = "sensor/data/.*"
 
 const switchTopic = "sensor/change/prot" // switch response channel to swap from CoAP to MQTT or vice versa
 // const switchResponse = "sensor/change/prot" // sender channel to swap protocols
 const changeVars = "sensor/change/vars";
 
-var sensor = {} // JSON with elements of the session (pushed to the dashboard)
+const gps = {
+    lat: 42.846290,
+    lng: 13.904817
+}
 
 // ---------- Functions for MQTT -----------
 init = () => {
@@ -94,53 +92,36 @@ init = () => {
         if (topic == sensor_data_temp) {
             console.log('MQTT: Trigger message on ' + topic)
             data = JSON.parse(payload.toString()) // stringify is used for different encoding string
-            console.log(data);
-            processJSON(data)
+            console.log(data)
+            influxManager.writeApi(clientId, gps, "temperature", data)
+
         } else if (topic == sensor_data_hum) {
             console.log('MQTT: Trigger message on ' + topic)
             data = JSON.parse(payload.toString()) // stringify is used for different encoding string
-            console.log(data);
-            processJSON(data)
+            console.log(data)
+            influxManager.writeApi(clientId, gps, "humidity", data)
+
         } else if (topic == sensor_data_gas) {
             console.log('MQTT: Trigger message on ' + topic)
             data = JSON.parse(payload.toString()) // stringify is used for different encoding string
-            console.log(data);
-            processJSON(data)
-        } else if (topic == sensor_data_lat) {
-            console.log('MQTT: Trigger message on ' + topic)
-            data = JSON.parse(payload.toString()) // stringify is used for different encoding string
-            console.log(data);
-            processJSON(data)
-        } else if (topic == sensor_data_long) {
-            console.log('MQTT: Trigger message on ' + topic)
-            data = JSON.parse(payload.toString()) // stringify is used for different encoding string
-            console.log(data);
-            processJSON(data)
-        } else if (topic == sensor_data_gas) {
-            console.log('MQTT: Trigger message on ' + topic)
-            data = JSON.parse(payload.toString()) // stringify is used for different encoding string
-            console.log(data);
-            processJSON(data)
+            console.log(data)
+            influxManager.writeApi(clientId, gps, "gas", data)
+
         } else if (topic == sensor_data_aqi) {
             console.log('MQTT: Trigger message on ' + topic)
             data = JSON.parse(payload.toString()) // stringify is used for different encoding string
-            console.log(data);
-            processJSON(data)
+            console.log(data)
+            influxManager.writeApi(clientId, gps, "aqi", data)
+        } else if (topic == sensor_data_rssi) {
+            console.log('MQTT: Trigger message on ' + topic)
+            data = JSON.parse(payload.toString()) // stringify is used for different encoding string
+            console.log(data)
+            influxManager.writeApi(clientId, gps, "rss", data)
+
         } else if (topic == switchTopic) {
             console.log('MQTT: Trigger message on ' + switchTopic)
-            //data = JSON.parse(payload.toString('utf-8'))
-
-            // id = data.id
-            // if (checkId(id)) {
-            //     sensors[id]['protocol'] = data.protocol
-            //     isPresent = true
-            // }
-
-            // if (isPresent) {
-            //     console.log('MQTT: Switch response for sensor: ' + id + "\nSaved in session.")
-            // } else {
-            //     console.log('MQTT: Sensor not in session during invoking of ' + switchResponse + ' for sensor ' + data.id)
-            // }
+            data = JSON.parse(payload.toString('utf-8'))
+            console.log(data)
         }
     })
 }
@@ -237,6 +218,31 @@ const updateSetup = (request, response) => {
     response.status(200).json(sensor)
 }
 
+const httpData = (req) => {
+
+    let data = req.body
+    console.log(req.body)
+
+    const clientId = "diubi-esp-32"
+    const gps = data.gps
+    for (const [key, value] of Object.entries(InfluxData.buckets)) {
+
+        switch (value) {
+            case "temperature": influxManager.writeApi(clientId, gps, value, data.temp)
+                break;
+            case "humidity": influxManager.writeApi(clientId, gps, value, data.hum)
+                break;
+            case "gas": influxManager.writeApi(clientId, gps, value, data.gasv.gas)
+                break;
+            case "aqi": influxManager.writeApi(clientId, gps, value, data.gasv.AQI)
+                break;
+            case "rss": influxManager.writeApi(clientId, gps, value, data.rss)
+                break;
+            default:
+                break;
+        }
+    }
+}
 
 /**
  * forwardData(request, response) forwards the setup information to sensor via MQTT
@@ -266,96 +272,13 @@ forwardData = (data) => {
 }
 
 
-const processJSON = (data) => {
-
-    sensor = {
-        protocol: data['protocol'], // protocol
-        sampleFrequency: data['samF'], // current sample frequency
-        lastTime: Date.now(), // timestamp for the testing phase in ms
-        timestamp: Date.now(), // is equal in timestamp of the server
-        status: 1, // 1 connected, 0 disconnected
-    }
-
-    // update values
-    sensor['protocol'] = data['protocol']
-    if (sensor['sampleFrequency'] != data['samF']) {
-        request.get(
-            'http://localhost:5000/changeFreq/' + data['samF'],
-            { json: {} },
-            function (error, response, body) {
-                if (!error && response.statusCode == 200) {
-                    // given data in the body, we want to add them in the next datetime according to the sensor sample frequency
-                    console.log('FLASK: Changed sample frequency with frequency at ' + data['samF'])
-                }
-            }
-        );
-    }
-    sensor['sampleFrequency'] = data['samF']
-    sensor['gps'] = data['gps']
-    sensor['timestamp'] = Date.now()
-
-
-
-    // Write on InfluxDB
-    const influxId = data['id']
-    const gps = data['gps']
-    for (const [key, value] of Object.entries(InfluxData.buckets)) {
-        if (key == "temp" || key == "gas" || key == "hum") {
-            console.log('Forecast: Sending request to: ' + 'http://localhost:5000/forecast/' + predLen + '/' + idJSON + "/" + key + "/" + sensors[idJSON]['sampleFrequency'])
-            request.get(
-                'http://localhost:5000/forecast/' + predLen + '/' + idJSON + "/" + key + "/" + sensors[idJSON]['sampleFrequency'],
-                { json: {} },
-                function (error, response, body) {
-                    if (!error && response.statusCode == 200) {
-                        // given data in the body, we want to add them in the next datetime according to the sensor sample frequency
-                        influxManager.writeForecastApi(influxId, gps, body, value, sensors[idJSON]['sampleFrequency'])
-                    }
-                }
-            );
-        }
-        switch (value) {
-            case "temperature": influxManager.writeApi(influxId, gps, value, data['temp'])
-                break;
-            case "humidity": influxManager.writeApi(influxId, gps, value, data['hum'])
-                break;
-            case "gas": influxManager.writeApi(influxId, gps, value, data['gasv']['gas'])
-                break;
-            case "aqi": influxManager.writeApi(influxId, gps, value, data['gasv']['AQI'])
-                break;
-            case "rss": influxManager.writeApi(influxId, gps, value, data['rss'])
-                break;
-            default:
-                break;
-        }
-    }
-
-    // Adding external temperature
-    // let latitude = data.gps.lat
-    // let longitude = data.gps.lng
-    // var url = `http://api.openweathermap.org/data/2.5/weather?`
-    //     + `lat=${latitude}&lon=${longitude}&appid=${API_WEATHER_KEY}`
-    // request({ url: url, json: true }, function (error, response) {
-    //     if (error) {
-    //         console.log('METEO-STAT: Unable to connect to Forecast API');
-    //     }
-    //     else {
-    //         let temp = Math.round(response.body.main.temp - 273.15, 2) // convert in celsius
-    //         let bucket = InfluxData.buckets.tempout
-    //         influxManager.writeApi(influxId, gps, bucket, temp)
-    //     }
-    // })
-
-    // console.log('---------------------')
-
-}
-
 
 // module export 
 module.exports = {
 
-    processJSON,
     updateSetup,
     switchMode,
+    httpData,
     init,
 
 }

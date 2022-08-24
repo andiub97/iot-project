@@ -21,8 +21,6 @@ const portHttp = 8080
 const host = '127.0.0.1'
 const app = express()
 
-const influxManager = new influx.InfluxManager(InfluxData.host, InfluxData.port, InfluxData.token, InfluxData.org)
-
 
 // bodyParser for POST
 app.use(bodyParser.json())
@@ -48,12 +46,7 @@ app.post('/update-setup', prots.updateSetup)
 // switch mode
 app.post('/switch-mode', prots.switchMode)
 
-app.post('/data', function (req, res) {
-
-    console.log(req.body)
-
-
-})
+app.post('/data', prots.httpData)
 
 // listening on http
 app.listen(portHttp, host, () => {
