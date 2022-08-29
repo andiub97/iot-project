@@ -2,14 +2,14 @@ const { json } = require('express/lib/response')
 const mqtt = require('mqtt')
 const influx = require('../influxdb/InfluxManager')
 
-const hostMqtt = '192.168.43.177' // Broker Mosquitto
+const hostMqtt = '192.168.178.39' // Broker Mosquitto
 const portMqtt = '1883' // listen port for MQTT
 const clientId = `diubi-esp-32` // subscriber id
 const connectUrl = `mqtt://${hostMqtt}:${portMqtt}` // url for connection
 
 // ------ Influx Data and Manager Setup ------
 const InfluxData = {
-    token: '0-boCREZ1XTzYhmT3RYogxFDtraRzOEZsMYNxjp0mBOWHCif47lUv2UddrAfyJUwupk33ci92-aHHFWhjv2pRg==',
+    token: 'gYkhnh7Ft18AtFX8m7BEn3RQGb4vb9tcE_AbWkXFfXgpqU69ad3DQsKPvHW959iqN-mLFZW2wi6Pc7-XmohEAA==',
     host: 'localhost',
     org: 'iot_group',
     port: 8086,
@@ -164,22 +164,15 @@ const switchMode = (request, response) => {
 const updateSetup = (request, response) => {
     console.log('HTTP: Update data received...')
     console.log('-----------------------------')
+    sensor = [];
     const data = {
         minGas: request.body.minGas, // inverted related to data domain
         maxGas: request.body.maxGas, // inverted related to data domain
         sampleFrequency: request.body.sampleFrequency,
     }
-
-
-    if (request.body.sampleFrequency < 5000) {
-        sensor['sampleFrequency'] = 5000
-    } else {
-        sensor['sampleFrequency'] = request.body.sampleFrequency
-    }
-
     // check data
 
-    if (data.minGas > data.maxGas || (data.sampleFrequency == undefined || data.sampleFrequency == null || data.sampleFrequency < 5000)) {
+    if (data.minGas > data.maxGas || (data.sampleFrequency == undefined || data.sampleFrequency == null || data.sampleFrequency < 1000)) {
         console.log('HTTP Error: Invalid values received.')
         response.json({ status: 400 })
         console.log('-----------------------------')
@@ -199,22 +192,13 @@ const updateSetup = (request, response) => {
             data.maxGas = -1
         }
 
-        if (data.sampleFrequency != undefined && data.sampleFrequency != null) {
-            console.log('HTTP: Received SAMPLE_FREQUENCY from the dashboard: ' + data.sampleFrequency)
-        } else {
-            data.sampleFrequency = -1
+        console.log('HTTP: Received SAMPLE_FREQUENCY from the dashboard: ' + data.sampleFrequency)
+        console.log('-----------------------------')
+        success = forwardData(data) // forward on MQTT channels
+        if (!success) {
+            console.log('Error during publishing setup data')
         }
-
-        if (data.sampleFrequency != undefined && data.sampleFrequency > 0 && data.sampleFrequency != null) {
-            id = data.id
-
-            console.log('-----------------------------')
-            success = forwardData(data) // forward on MQTT channels
-            if (!success) {
-                console.log('Error during publishing setup data')
-            }
-        }
-    }
+    } 
     response.status(200).json(sensor)
 }
 
