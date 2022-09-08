@@ -1,11 +1,16 @@
 const { json } = require('express/lib/response')
 const mqtt = require('mqtt')
 const influx = require('../influxdb/InfluxManager')
+const request = require('request')
 
-const hostMqtt = '192.168.43.177' // Broker Mosquitto
+const hostMqtt = '192.168.1.159' // Broker Mosquitto
 const portMqtt = '1883' // listen port for MQTT
 const clientId = `diubi-esp-32` // subscriber id
 const connectUrl = `mqtt://${hostMqtt}:${portMqtt}` // url for connection
+
+// ----- OpenWeatherAPI metadata -----
+const API_WEATHER_KEY = '6ce9db9e162494e26f2861ae54485b89';
+
 
 // ------ Influx Data and Manager Setup ------
 const InfluxData = {
@@ -94,6 +99,9 @@ init = () => {
             data = JSON.parse(payload.toString()) // stringify is used for different encoding string
             console.log(data)
             influxManager.writeApi(clientId, gps, "temperature", data)
+            getOutdoorTemp().then(function (temp) {
+                influxManager.writeApi(clientId, gps, "out_temperature", temp)
+            })
 
         } else if (topic == sensor_data_hum) {
             console.log('MQTT: Trigger message on ' + topic)
@@ -172,9 +180,9 @@ const updateSetup = (request, response) => {
 
 
     if (request.body.sampleFrequency < 5000) {
-        sensor['sampleFrequency'] = 5000
+        data['sampleFrequency'] = 5000
     } else {
-        sensor['sampleFrequency'] = request.body.sampleFrequency
+        data['sampleFrequency'] = request.body.sampleFrequency
     }
 
     // check data
@@ -215,7 +223,7 @@ const updateSetup = (request, response) => {
             }
         }
     }
-    response.status(200).json(sensor)
+    response.status(200).json(data)
 }
 
 const httpData = (req) => {
@@ -228,7 +236,12 @@ const httpData = (req) => {
     for (const [key, value] of Object.entries(InfluxData.buckets)) {
 
         switch (value) {
-            case "temperature": influxManager.writeApi(clientId, gps, value, data.temp)
+            case "temperature":
+                influxManager.writeApi(clientId, gps, value, data.temp)
+                getOutdoorTemp().then(function (temp) {
+                    influxManager.writeApi(clientId, gps, "out_temperature", temp)
+                })
+
                 break;
             case "humidity": influxManager.writeApi(clientId, gps, value, data.hum)
                 break;
@@ -242,6 +255,28 @@ const httpData = (req) => {
                 break;
         }
     }
+}
+
+function getOutdoorTemp() {
+
+    var url = `http://api.openweathermap.org/data/2.5/weather?`
+        + `lat=${gps.lat}&lon=${gps.lng}&appid=${API_WEATHER_KEY}`
+
+    return new Promise(function (resolve, reject) {
+
+        request({ url: url, json: true }, function (error, response) {
+            if (error) {
+                console.log('Unable to connect to Forecast API');
+                reject(error)
+            }
+            else {
+                let avg_temp = (response.body.main.temp_max + response.body.main.temp_min) / 2
+                let temp = Math.round((avg_temp - 273.15), 2)
+                console.log('It is currently ' + temp + ' degrees out.')
+                resolve(temp)
+            }
+        })
+    });
 }
 
 /**
@@ -279,6 +314,7 @@ module.exports = {
     updateSetup,
     switchMode,
     httpData,
+    getOutdoorTemp,
     init,
 
 }
