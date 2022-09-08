@@ -1,7 +1,5 @@
 /**
  * app.js is the main module for the proxy server, it is composed by the main communications and API for the sensors and back-end components interconnection. 
- * It provides a front-end dashboard with notification channel on socketio via HTTP and internal multicasting communication with sensors in MQTT and CoAP within 
- * testing modes and forwarding mechanics with InfluxDB and Grafana.
  */
 
 
@@ -10,7 +8,8 @@ const express = require('express')
 const http = require('http')
 const prots = require('./protocols')
 const bodyParser = require('body-parser')
-const influx = require('../influxdb/InfluxManager')
+const swaggerUi = require('swagger-ui-express')
+const swaggerFile = require('../swagger_output.json')
 // --------- MQTT setup -------------
 prots.init()
 
@@ -19,6 +18,7 @@ prots.init()
 
 const portHttp = 8080
 const host = '127.0.0.1'
+const router = express.Router();
 const app = express()
 
 
@@ -39,6 +39,8 @@ app.use(express.static(__dirname + "/public", {
     cacheControl: true, // always in cache
     maxAge: "30d" // death time
 }));
+
+app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerFile))
 
 // update data for sensor via http protocol
 app.post('/update-setup', prots.updateSetup)
