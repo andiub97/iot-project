@@ -166,4 +166,4 @@ dist
 # Ignore code-workspaces
 *.code-workspace
 
-# End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,node
+sensor/board-sensor/board-sensor.ino
