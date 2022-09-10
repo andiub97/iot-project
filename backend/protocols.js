@@ -2,24 +2,27 @@ const { json } = require('express/lib/response')
 const mqtt = require('mqtt')
 const influx = require('../influxdb/InfluxManager')
 const request = require('request')
+require('dotenv').config({ path: '../.env' })
 
-const hostMqtt = '192.168.178.39' // Broker Mosquitto
+
+const hostMqtt = '192.168.1.159' // Broker Mosquitto
 const portMqtt = '1883' // listen port for MQTT
-const clientId = `diubi-esp-32` // subscriber id
+const clientId = process.env.SENSOR_CLIENT_ID // subscriber id
 const connectUrl = `mqtt://${hostMqtt}:${portMqtt}` // url for connection
 
 // ----- OpenWeatherAPI metadata -----
-const API_WEATHER_KEY = '6ce9db9e162494e26f2861ae54485b89';
+const API_WEATHER_KEY = process.env.OPEN_WEATHER_KEY;
 
 
 // ------ Influx Data and Manager Setup ------
 const InfluxData = {
-    token: 'gYkhnh7Ft18AtFX8m7BEn3RQGb4vb9tcE_AbWkXFfXgpqU69ad3DQsKPvHW959iqN-mLFZW2wi6Pc7-XmohEAA==',
-    host: 'localhost',
-    org: 'iot_group',
-    port: 8086,
+    token: process.env.INFLUX_TOKEN,
+    host: process.env.INFLUX_HOST,
+    org: process.env.INFLUX_ORG,
+    port: process.env.INFLUX_HOST_PORT,
     buckets: {
         temp: 'temperature',
+        out_temp: 'out_temperature',
         aqi: 'aqi',
         hum: 'humidity',
         rss: 'rss',
@@ -46,16 +49,16 @@ const switchTopic = "sensor/change/prot" // switch response channel to swap from
 const changeVars = "sensor/change/vars";
 
 const gps = {
-    lat: 42.846290,
-    lng: 13.904817
+    lat: process.env.GPS_LAT,
+    lng: process.env.GPS_LONG
 }
 
 // ---------- Functions for MQTT -----------
 init = () => {
     client = mqtt.connect(connectUrl, {
         clientId,
-        username: 'diubi',
-        password: 'diubi',
+        username: process.env.MQTT_USER,
+        password: process.env.MQTT_PASS,
         clean: true,
         reconnectPeriod: 1000,
     })
@@ -215,7 +218,6 @@ const httpData = (req) => {
     let data = req.body
     console.log(req.body)
 
-    const clientId = "diubi-esp-32"
     const gps = data.gps
     for (const [key, value] of Object.entries(InfluxData.buckets)) {
 
@@ -225,7 +227,6 @@ const httpData = (req) => {
                 getOutdoorTemp().then(function (temp) {
                     influxManager.writeApi(clientId, gps, "out_temperature", temp)
                 })
-
                 break;
             case "humidity": influxManager.writeApi(clientId, gps, value, data.hum)
                 break;

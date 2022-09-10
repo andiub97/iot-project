@@ -1,8 +1,6 @@
 /**
  * app.js is the main module for the proxy server, it is composed by the main communications and API for the sensors and back-end components interconnection. 
  */
-
-
 // -------- Dependencies --------
 const express = require('express')
 const http = require('http')
@@ -10,12 +8,13 @@ const prots = require('./protocols')
 const bodyParser = require('body-parser')
 const swaggerUi = require('swagger-ui-express')
 const swaggerFile = require('../swagger_output.json')
+require('dotenv').config({ path: '../.env' })
+
 // --------- MQTT setup -------------
 prots.init()
 
 
 // ----- Express setup -----
-
 const portHttp = 8080
 const host = '127.0.0.1'
 const router = express.Router();
