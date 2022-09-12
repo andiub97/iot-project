@@ -4,32 +4,14 @@
 #include <PubSubClient.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
-#define WIFI_SSID "Xperia XZ2 Compact_8002"
-#define WIFI_PASSWORD "diubidiubi"
+#include "Env.h"
 #define INIT_MIN_GAS 500 // initial setup for gas playground
 #define INIT_MAX_GAS 4095 // initial setup for gas playground
 #define INIT_SAMPLE_FREQ 2500 // initial setup for sensors 
 #define INIT_AQI -1 // initial setup for gas playground
-// Digital pin connected to the DHT sensor
-#define DHTPIN 27
-
-// Digital pin connected to the MQ2 sensor
-#define MQ2PIN 35
-
-// DHT sensor type you're using
-#define DHTTYPE DHT22   // DHT 22  
-
-// MQTT Broker
-const char* BROKER_MQTT = "192.168.43.177";
-int BROKER_PORT = 1883;
-
-// MQTT Credentials
-const char *mqtt_username = "diubi";
-const char *mqtt_password = "diubi";
 
 // HTTP Server
-String serverName = "http://192.168.43.177:8080/data";
-
+String serverName = "http://" + String(serverIP) + "/data";
 // ----------- Topics -----------
 const char *sensor_change_vars = "sensor/change/vars"; // setup topic to change metadata
 const char *sensor_change_prot = "sensor/change/prot"; // richiesta di switching di protocollo
@@ -170,15 +152,17 @@ void setup() {
   Serial.begin(19200);
   pinMode(MQ2PIN, INPUT);
   preferences.begin("iot-app", false);
-  preferences.putDouble("lat", 42.846290 );
-  preferences.putDouble("long", 13.904817 );
+  preferences.putString("lat", lat );
+  preferences.putString("long", lon );
   dht.begin();
 
   Serial.println("Connecting to ");
   Serial.println(WIFI_SSID);
+  
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  WiFi.mode(WIFI_STA); // station mode
+  WiFi.mode(WIFI_STA);
   Serial.print("Connecting to WiFi..");
+  Serial.println(WiFi.localIP());
   while (WiFi.status() != WL_CONNECTED) {
     delay(5000);
     Serial.print(".");
@@ -218,7 +202,7 @@ void loop() {
     hum = dht.readHumidity();
     temp = dht.readTemperature();
 
-    // Check if any reads failed and exit early (to try again).
+//     Check if any reads failed and exit early (to try again).
     if (isnan(temp) || isnan(hum)) {
       Serial.println(F("Failed to read from DHT sensor!"));
       return;
@@ -273,8 +257,8 @@ void loop() {
       MQTT.publish(sensor_data_hum, String(hum).c_str());
       MQTT.publish(sensor_data_gas, String(gas_current_value).c_str());
       MQTT.publish(sensor_data_rssi, String(rssi).c_str());
-      MQTT.publish(sensor_data_lat, String(preferences.getDouble("lat")).c_str());
-      MQTT.publish(sensor_data_long, String(preferences.getDouble("long")).c_str());
+      MQTT.publish(sensor_data_lat, String(preferences.getString("lat")).c_str());
+      MQTT.publish(sensor_data_long, String(preferences.getString("long")).c_str());
 
       if (AQI != -1) {
         MQTT.publish(sensor_data_aqi, String(AQI).c_str());
@@ -290,8 +274,8 @@ void loop() {
       http.addHeader("Content-Type", "application/json");
 
       // Send sensor data in post requests
-      doc["gps"]["lat"] = preferences.getDouble("lat");
-      doc["gps"]["lng"] = preferences.getDouble("long");
+      doc["gps"]["lat"] = preferences.getString("lat");
+      doc["gps"]["lng"] = preferences.getString("long");
       doc["rss"] = rssi;
       doc["temp"] = temp;
       doc["hum"] = hum;
