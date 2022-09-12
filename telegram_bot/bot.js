@@ -34,14 +34,13 @@ bot.start((context) => {
 bot.command('help', async (ctx) => {
 
     ctx.reply('👋 I can help you create and manage a notification system on your personal device.\n\n' +
-        'I am a bot made by @Andiub and Riccardo Baratin for the project of Internet of Things. 👇\n\n\n' +
 
         'COMMANDS:\nEach command is preceded by a back slash\n\n' +
         'help - it is the current message.\n\n' +
         'buckets - list the current monitored influx buckets.\n\n' +
         '<bucket-id> - it has one parameter equals to the id of the host to monitor, the <bucket-id> is given by \\buckets command.\n\n\n' +
-        'OWNER:\n' +
-        'Telegram owner is @Andiub, internal configuration is open-source and consultable at the following link:')
+
+        'I was made for the Internet of Things project of @Andiub and @RiccardoBaratin, the link to the github project :')
 
     ctx.reply("github.com/andiub97/iot-project")
 
