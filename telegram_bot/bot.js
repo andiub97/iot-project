@@ -1,5 +1,6 @@
 const { InfluxDB } = require('@influxdata/influxdb-client')
 const { Telegraf } = require('telegraf')
+const { createServer } = require("http");
 require('dotenv').config({ path: '../.env' })
 
 
@@ -57,6 +58,7 @@ bot.command('buckets', (ctx) => {
         "\n\nIf you want to invoke them, you must put a back slash before and specify the id of the host. The @Andiub's host is diubi-esp-32")
 })
 
+
 for (const [key, value] of Object.entries(InfluxData.buckets)) {
     console.log('Creation of command /' + key + ' to query on bucket ' + value)
     bot.command(key, context => {
@@ -110,7 +112,7 @@ for (const [key, value] of Object.entries(InfluxData.buckets)) {
 }
 console.log('Status: Success')
 console.log('Launching bot...')
-bot.launch()
+bot.launch();
 console.log('Bot listening...')
 
 

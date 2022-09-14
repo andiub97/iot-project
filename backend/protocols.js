@@ -1,5 +1,7 @@
 const { json } = require('express/lib/response')
 const mqtt = require('mqtt')
+const http = require('http')
+const https = require('https')
 const influx = require('../influxdb/InfluxManager')
 const request = require('request')
 require('dotenv').config({ path: '../.env' })
@@ -63,6 +65,8 @@ init = () => {
         reconnectPeriod: 1000,
     })
 
+    createAQICheck()
+
     // reference name topic :-> name
     references = {}
 
@@ -98,35 +102,35 @@ init = () => {
 
     client.on('message', (topic, payload) => {
         if (topic == sensor_data_temp) {
-            console.log('MQTT: Trigger message on ' + topic)
+            // console.log('MQTT: Trigger message on ' + topic)
             data = JSON.parse(payload.toString()) // stringify is used for different encoding string
-            console.log(data)
+            // console.log(data)
             influxManager.writeApi(clientId, gps, "temperature", data)
             getOutdoorTemp().then(function (temp) {
                 influxManager.writeApi(clientId, gps, "out_temperature", temp)
             })
 
         } else if (topic == sensor_data_hum) {
-            console.log('MQTT: Trigger message on ' + topic)
+            // console.log('MQTT: Trigger message on ' + topic)
             data = JSON.parse(payload.toString()) // stringify is used for different encoding string
-            console.log(data)
+            // console.log(data)
             influxManager.writeApi(clientId, gps, "humidity", data)
 
         } else if (topic == sensor_data_gas) {
-            console.log('MQTT: Trigger message on ' + topic)
+            // console.log('MQTT: Trigger message on ' + topic)
             data = JSON.parse(payload.toString()) // stringify is used for different encoding string
-            console.log(data)
+            // console.log(data)
             influxManager.writeApi(clientId, gps, "gas", data)
 
         } else if (topic == sensor_data_aqi) {
-            console.log('MQTT: Trigger message on ' + topic)
+            // console.log('MQTT: Trigger message on ' + topic)
             data = JSON.parse(payload.toString()) // stringify is used for different encoding string
-            console.log(data)
+            // console.log(data)
             influxManager.writeApi(clientId, gps, "aqi", data)
         } else if (topic == sensor_data_rssi) {
-            console.log('MQTT: Trigger message on ' + topic)
+            // console.log('MQTT: Trigger message on ' + topic)
             data = JSON.parse(payload.toString()) // stringify is used for different encoding string
-            console.log(data)
+            // console.log(data)
             influxManager.writeApi(clientId, gps, "rss", data)
 
         } else if (topic == switchTopic) {
@@ -257,12 +261,71 @@ function getOutdoorTemp() {
             else {
                 let avg_temp = (response.body.main.temp_max + response.body.main.temp_min) / 2
                 let temp = Math.round((avg_temp - 273.15), 2)
-                console.log('It is currently ' + temp + ' degrees out.')
+                // console.log('It is currently ' + temp + ' degrees out.')
                 resolve(temp)
             }
         })
     });
 }
+
+function createAQICheck() {
+
+    const data = influxManager.AQICheckBody()
+    const options = {
+        hostname: `localhost`,
+        port: InfluxData.port,
+        path: '/api/v2/checks',
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Token ${InfluxData.token}`
+        },
+    };
+
+    const req = http.request(options, res => {
+        console.log(`statusCode: ${res.statusCode}`);
+
+        res.on('data', d => {
+            process.stdout.write(d);
+        });
+    });
+
+    req.on('error', error => {
+        console.error(error);
+    });
+
+    req.write(data);
+    req.end();
+
+}
+
+const seeNewUser = (request) => {
+
+    const user = request.user
+    const options = {
+        hostname: `api.telegram.org`,
+        path: `/bot5699129151:AAH3UvJbET6vvWATs_oHSOYo9naFKYRp2mI/sendMessage?chat_id=${user}&text=FUNZIONA!!`,
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+    };
+
+    const req = https.request(options, res => {
+        console.log(`statusCode: ${res.statusCode}`);
+
+        res.on('data', d => {
+            process.stdout.write(d);
+        });
+    });
+
+    req.on('error', error => {
+        console.error(error);
+    });
+
+    req.end();
+}
+
 
 /**
  * forwardData(request, response) forwards the setup information to sensor via MQTT
@@ -300,6 +363,7 @@ module.exports = {
     switchMode,
     httpData,
     getOutdoorTemp,
+    seeNewUser,
     init,
 
 }

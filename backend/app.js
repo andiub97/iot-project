@@ -49,6 +49,8 @@ app.post('/switch-mode', prots.switchMode)
 
 app.post('/data', prots.httpData)
 
+app.post('/newTelegramUser', prots.seeNewUser)
+
 // listening on http
 app.listen(portHttp, host, () => {
     console.log(`Listening in HTTP  on ${host}:${portHttp}.`)

@@ -28,7 +28,7 @@ class InfluxManager {
 
         writeApi.close()
             .then(() => {
-                console.log('InfluxDB: Wrote value: ' + value + " on bucket: " + bucket + " with host: " + clientId + "; lat: " + gps.lat + "; lng: " + gps.lng)
+                // console.log('InfluxDB: Wrote value: ' + value + " on bucket: " + bucket + " with host: " + clientId + "; lat: " + gps.lat + "; lng: " + gps.lng)
             })
             .catch(e => {
                 console.log('InfluxDB Error: ' + e)
@@ -151,6 +151,56 @@ class InfluxManager {
             },
         })
     }
+
+
+    AQICheckBody() {
+
+        const data = JSON.stringify({
+            description: 'Check dedicated to AQI index',
+            name: 'y44rgavav89898vv8cv989cv98c9v8cv',
+            orgID: '46ed97ad2e9f71ec',
+            query:
+            {
+                builderConfig: {
+                    aggregateWindow: {
+                        fillValues: true,
+                        period: "15s"
+                    },
+                    buckets: [
+                        "gas"
+                    ],
+                    functions: [],
+                    tags: []
+                },
+                editMode: "builder",
+                name: "onvonavocnaon",
+                text: `
+                    from(bucket: "gas")
+                    |> range(start: -15s)
+                    |> filter(fn: (r) => r["_measurement"] == "val")
+                    |> filter(fn: (r) => r["_field"] == "gas")
+                    |> aggregateWindow(every: 15s, fn: max, createEmpty: false)
+                    `
+            },
+            status: 'active',
+            every: '15s',
+            statusMessageTemplate: `GAS alert`,
+            taskID: `09f99969149f5000`,
+            thresholds: [
+                {
+                    allValues: false,
+                    level: "WARN",
+                    type: "greater",
+                    value: 1
+                },
+            ],
+            type: 'threshold'
+        });
+
+        return data
+
+    }
+
 
 
 }
