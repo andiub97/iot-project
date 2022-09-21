@@ -1,6 +1,6 @@
 const { InfluxDB } = require('@influxdata/influxdb-client')
 const { Point } = require('@influxdata/influxdb-client')
-const { QueryAPI } = require('@influxdata/influxdb-client-apis')
+require('dotenv').config({ path: '../.env' })
 
 class InfluxManager {
     constructor(host, port, token, org) {
@@ -28,7 +28,7 @@ class InfluxManager {
 
         writeApi.close()
             .then(() => {
-                // console.log('InfluxDB: Wrote value: ' + value + " on bucket: " + bucket + " with host: " + clientId + "; lat: " + gps.lat + "; lng: " + gps.lng)
+                console.log('InfluxDB: Wrote value: ' + value + " on bucket: " + bucket + " with host: " + clientId + "; lat: " + gps.lat + "; lng: " + gps.lng)
             })
             .catch(e => {
                 console.log('InfluxDB Error: ' + e)
@@ -157,41 +157,40 @@ class InfluxManager {
 
         const data = JSON.stringify({
             description: 'Check dedicated to AQI index',
-            name: 'y44rgavav89898vv8cv989cv98c9v8cv',
-            orgID: '46ed97ad2e9f71ec',
+            name: 'AQI_CHECK',
+            orgID: process.env.INFLUX_ORG_ID,
             query:
             {
                 builderConfig: {
                     aggregateWindow: {
                         fillValues: true,
-                        period: "15s"
+                        period: "30s"
                     },
                     buckets: [
-                        "gas"
+                        "aqi"
                     ],
                     functions: [],
                     tags: []
                 },
                 editMode: "builder",
-                name: "onvonavocnaon",
+                name: "query",
                 text: `
-                    from(bucket: "gas")
-                    |> range(start: -15s)
+                    from(bucket: "aqi")
+                    |> range(start: -30s)
                     |> filter(fn: (r) => r["_measurement"] == "val")
-                    |> filter(fn: (r) => r["_field"] == "gas")
-                    |> aggregateWindow(every: 15s, fn: max, createEmpty: false)
+                    |> filter(fn: (r) => r["_field"] == "aqi")
+                    |> aggregateWindow(every: 30s, fn: max, createEmpty: false)
                     `
             },
             status: 'active',
-            every: '15s',
-            statusMessageTemplate: `GAS alert`,
-            taskID: `09f99969149f5000`,
+            every: '30s',
+            statusMessageTemplate: 'AQI_alert',
             thresholds: [
                 {
                     allValues: false,
                     level: "WARN",
                     type: "greater",
-                    value: 1
+                    value: 0.0
                 },
             ],
             type: 'threshold'
@@ -206,12 +205,13 @@ class InfluxManager {
 }
 
 const InfluxData = {
-    token: 'XsaAgTTIvwmy0G9jrEMf2S2-hQfS2myED2PR_bEsZHoydrfol8qqE-Mnae63BxRDM8qsREHCGYrqsTz0zygdKQ==',
-    host: 'localhost',
-    org: 'iot-org',
-    port: 8086,
+    token: process.env.INFLUX_TOKEN,
+    host: process.env.INFLUX_HOST,
+    org: process.env.INFLUX_ORG,
+    port: process.env.INFLUX_HOST_PORT,
     buckets: {
         temp: 'temperature',
+        out_temp: 'out_temperature',
         aqi: 'aqi',
         hum: 'humidity',
         rss: 'rss',
