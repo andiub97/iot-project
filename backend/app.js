@@ -15,7 +15,7 @@ prots.init()
 
 
 // ----- Express setup -----
-const portHttp = 8080
+const portHttp = 80
 const host = '127.0.0.1'
 const router = express.Router();
 const app = express()
@@ -29,7 +29,7 @@ app.use(
     })
 )
 
-http.createServer(app).listen(8080)
+http.createServer(app).listen(80)
 
 // static directory used to the app
 app.use(express.static(__dirname + "/public", {
@@ -49,7 +49,9 @@ app.post('/switch-mode', prots.switchMode)
 
 app.post('/data', prots.httpData)
 
-app.post('/newTelegramUser', prots.seeNewUser)
+app.post('/newTelegramUser', prots.getNewUsers)
+
+app.post('/aqi_alert', prots.sendAlertMessageTelegram)
 
 // listening on http
 app.listen(portHttp, host, () => {
