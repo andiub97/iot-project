@@ -4,6 +4,7 @@ const http = require('http')
 const https = require('https')
 const influx = require('../influxdb/InfluxManager')
 const request = require('request')
+const fs = require('fs')
 require('dotenv').config({ path: '../.env' })
 
 
@@ -106,9 +107,9 @@ init = () => {
             data = JSON.parse(payload.toString()) // stringify is used for different encoding string
             // console.log(data)
             influxManager.writeApi(clientId, gps, "temperature", data)
-            getOutdoorTemp().then(function (temp) {
-                influxManager.writeApi(clientId, gps, "out_temperature", temp)
-            })
+            // getOutdoorTemp().then(function (temp) {
+            //     influxManager.writeApi(clientId, gps, "out_temperature", temp)
+            // })
 
         } else if (topic == sensor_data_hum) {
             // console.log('MQTT: Trigger message on ' + topic)
@@ -299,31 +300,88 @@ function createAQICheck() {
 
 }
 
-const seeNewUser = (request) => {
 
-    const user = request.user
-    const options = {
-        hostname: `api.telegram.org`,
-        path: `/bot5699129151:AAH3UvJbET6vvWATs_oHSOYo9naFKYRp2mI/sendMessage?chat_id=${user}&text=FUNZIONA!!`,
+
+const getNewUsers = (req) => {
+    console.log(req.body);
+
+    fs.readFile('../telegram_file.json', function (error, data) {
+
+        if (error) {
+            throw error;
+        }
+        const content = JSON.parse(data)
+        console.log(content)
+        let res = writeContent(content)
+        fs.writeFile("../telegram_file.json", JSON.stringify(res), function (err) {
+            if (err) {
+                console.log("error ", err);
+            }
+        })
+
+    });
+
+    function writeContent(content) {
+
+        var flag = false
+
+        for (i = 0; i < content.length; i++) {
+            var update_id = content[i].update_id
+            if (update_id === req.body.update_id) {
+                flag = true
+
+            }
+        }
+        if (flag === false || content.length === 0) {
+            content.push({
+                "update_id": req.body.update_id,
+                "chat_id": req.body.message.chat.id
+            })
+        }
+        return content
+
+    }
+
+
+}
+
+const sendAlertMessageTelegram = (req) => {
+
+    const data = fs.readFileSync('../telegram_file.json');
+    const list = JSON.parse(data);
+    const message = req.body._message
+    for (i = 0; i < list.length; i++) {
+        sendReq(list[i].chat_id, message)
+
+    }
+
+
+}
+
+function sendReq(id, mess) {
+    options = {
+        hostname: 'api.telegram.org',
+        path: `/bot${process.env.ALERT_BOT_KEY}/sendMessage?chat_id=${id}&text=${mess}`,
         method: 'GET',
         headers: {
             'Content-Type': 'application/json'
-        },
-    };
+        }
+    }
 
-    const req = https.request(options, res => {
+    const r = https.request(options, res => {
         console.log(`statusCode: ${res.statusCode}`);
 
         res.on('data', d => {
             process.stdout.write(d);
         });
-    });
+    })
 
-    req.on('error', error => {
+
+    r.on('error', error => {
         console.error(error);
     });
 
-    req.end();
+    r.end();
 }
 
 
@@ -363,7 +421,8 @@ module.exports = {
     switchMode,
     httpData,
     getOutdoorTemp,
-    seeNewUser,
+    getNewUsers,
+    sendAlertMessageTelegram,
     init,
 
 }
