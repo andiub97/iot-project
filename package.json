@@ -21,7 +21,7 @@
     "request": "^2.88.2",
     "swagger-autogen": "^2.21.5",
     "swagger-ui-express": "^4.5.0",
-    "telegraf": "^4.9.1"
+    "telegraf": "^3.38.0"
   },
   "devDependencies": {
     "@types/node": "^18.7.16"
