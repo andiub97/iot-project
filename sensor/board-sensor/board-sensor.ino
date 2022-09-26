@@ -1,12 +1,13 @@
 #include <Env.h>
+#include <Evluation.h>
 #include "DHT.h"
 #include <WiFi.h>
 #include <Preferences.h>
 #include <PubSubClient.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
-#define INIT_MIN_GAS 500 // initial setup for gas playground
-#define INIT_MAX_GAS 4095 // initial setup for gas playground
+#define INIT_MIN_GAS 300 // initial setup for gas playground
+#define INIT_MAX_GAS 3500 // initial setup for gas playground
 #define INIT_SAMPLE_FREQ 2500 // initial setup for sensors 
 #define INIT_AQI -1 // initial setup for gas playground
 
@@ -47,7 +48,7 @@ int MAX_GAS_VALUE = INIT_MAX_GAS; // maximum gas value corresponding to the lowe
 int AQI = INIT_AQI; // AQI value
 int gas_values[5] = {NULL, NULL, NULL, NULL, NULL}; // status of gas values
 float gas_avg = 0; //gas avg during AQI computation
-
+int count = 0;
 unsigned long previousMillis = 0;   // Stores last time temperature was published
 
 WiFiClient clientMQTT;
@@ -155,12 +156,13 @@ void setup() {
   preferences.putString("lat", lat );
   preferences.putString("long", lon );
   dht.begin();
-
+  
   Serial.println("Connecting to ");
   Serial.println(WIFI_SSID);
   
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   WiFi.mode(WIFI_STA);
+
   Serial.print("Connecting to WiFi..");
   Serial.println(WiFi.localIP());
   while (WiFi.status() != WL_CONNECTED) {
@@ -171,6 +173,7 @@ void setup() {
   Serial.println("WiFi connected");
 
   MQTTSetup();
+  init_evaluation_vars();
 }
 
 void loop() {
@@ -230,10 +233,11 @@ void loop() {
       gas_avg = gas_avg / 5;
       Serial.print("Gas avg: ");
       Serial.println(String(gas_avg).c_str());
+
       if (gas_avg >= MAX_GAS_VALUE) {
-        AQI = 0;
-      } else if ((gas_avg >= MIN_GAS_VALUE) && (gas_avg < MAX_GAS_VALUE)) {
         AQI = 1;
+      } else if ((gas_avg >= MIN_GAS_VALUE) && (gas_avg < MAX_GAS_VALUE)) {
+        AQI = 0;
       } else {
         AQI = 2;
       }
@@ -286,7 +290,8 @@ void loop() {
         AQI = -1;
       }
       serializeJson(doc, buffer_ff);
-      http.POST(buffer_ff);
+      EVALUATE_HTTP(http.POST(buffer_ff));
+      print_stats();
 
       http.end();
     }
@@ -295,4 +300,5 @@ void loop() {
     // customized delay based on the runtime setup
     if (prot_mode != '2')delay(SAMPLE_FREQUENCY);
   }
+
 }
