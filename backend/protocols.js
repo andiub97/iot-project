@@ -8,8 +8,8 @@ const fs = require('fs')
 require('dotenv').config({ path: '../.env' })
 
 
-const hostMqtt = '192.168.1.159' // Broker Mosquitto
-const portMqtt = '1883' // listen port for MQTT
+const hostMqtt = process.env.MQTT_HOST // Broker Mosquitto
+const portMqtt = process.env.MQTT_PORT // listen port for MQTT
 const clientId = process.env.SENSOR_CLIENT_ID // subscriber id
 const connectUrl = `mqtt://${hostMqtt}:${portMqtt}` // url for connection
 
@@ -39,16 +39,10 @@ const influxManager = new influx.InfluxManager(InfluxData.host, InfluxData.port,
 // connection on Mosquitto broker
 var client = null
 
-const sensor_data_temp = "sensor/data/temperature";
-const sensor_data_hum = "sensor/data/humidity";
-const sensor_data_rssi = "sensor/data/rssi";
-const sensor_data_lat = "sensor/data/latitude";
-const sensor_data_long = "sensor/data/longitude";
-const sensor_data_gas = "sensor/data/gas";
-const sensor_data_aqi = "sensor/data/aqi";
+const sensor_data_all = "sensor/data/all";
+
 
 const switchTopic = "sensor/change/prot" // switch response channel to swap from CoAP to MQTT or vice versa
-// const switchResponse = "sensor/change/prot" // sender channel to swap protocols
 const changeVars = "sensor/change/vars";
 
 const gps = {
@@ -66,7 +60,7 @@ init = () => {
         reconnectPeriod: 1000,
     })
 
-    createAQICheck()
+    // createAQICheck()
 
     // reference name topic :-> name
     references = {}
@@ -78,61 +72,46 @@ init = () => {
         console.log('---------------------')
         console.log('MQTT Subscriptions: ')
         try {
-            client.subscribe(sensor_data_temp)
-            client.subscribe(sensor_data_hum)
-            client.subscribe(sensor_data_rssi)
-            client.subscribe(sensor_data_lat)
-            client.subscribe(sensor_data_long)
-            client.subscribe(sensor_data_gas)
-            client.subscribe(sensor_data_aqi)
+            client.subscribe(sensor_data_all)
             client.subscribe(switchTopic)
         } catch (e) {
             console.log('MQTT Error: ' + e)
         }
-        console.log('Subscription to ', sensor_data_temp + ' : Success')
-        console.log('Subscription to ', sensor_data_hum + '  : Success')
-        console.log('Subscription to ', sensor_data_rssi + ' : Success')
-        console.log('Subscription to ', sensor_data_lat + '  : Success')
-        console.log('Subscription to ', sensor_data_long + ' : Success')
-        console.log('Subscription to ', sensor_data_gas + '  : Success')
-        console.log('Subscription to ', sensor_data_aqi + '  : Success')
+        console.log('Subscription to ', sensor_data_all + ' : Success')
         console.log('Subscription to ', switchTopic + '  : Success')
         console.log('---------------------')
     })
 
 
     client.on('message', (topic, payload) => {
-        if (topic == sensor_data_temp) {
+        if (topic == sensor_data_all) {
             // console.log('MQTT: Trigger message on ' + topic)
             data = JSON.parse(payload.toString()) // stringify is used for different encoding string
-            // console.log(data)
-            influxManager.writeApi(clientId, gps, "temperature", data)
-            // getOutdoorTemp().then(function (temp) {
-            //     influxManager.writeApi(clientId, gps, "out_temperature", temp)
-            // })
+            console.log(data)
+            const gps = data.gps
+            for (const [key, value] of Object.entries(InfluxData.buckets)) {
 
-        } else if (topic == sensor_data_hum) {
-            // console.log('MQTT: Trigger message on ' + topic)
-            data = JSON.parse(payload.toString()) // stringify is used for different encoding string
-            // console.log(data)
-            influxManager.writeApi(clientId, gps, "humidity", data)
+                switch (value) {
+                    case "temperature":
+                        influxManager.writeApi(clientId, gps, value, data.temp)
+                        getOutdoorTemp().then(function (temp) {
+                            influxManager.writeApi(clientId, gps, "out_temperature", temp)
+                        })
+                        break;
+                    case "humidity": influxManager.writeApi(clientId, gps, value, data.hum)
+                        break;
+                    case "gas": influxManager.writeApi(clientId, gps, value, data.gasv.gas)
+                        break;
+                    case "aqi": influxManager.writeApi(clientId, gps, value, data.gasv.AQI)
+                        break;
+                    case "rss": influxManager.writeApi(clientId, gps, value, data.rss)
+                        break;
+                    default:
+                        break;
+                }
 
-        } else if (topic == sensor_data_gas) {
-            // console.log('MQTT: Trigger message on ' + topic)
-            data = JSON.parse(payload.toString()) // stringify is used for different encoding string
-            // console.log(data)
-            influxManager.writeApi(clientId, gps, "gas", data)
+            }
 
-        } else if (topic == sensor_data_aqi) {
-            // console.log('MQTT: Trigger message on ' + topic)
-            data = JSON.parse(payload.toString()) // stringify is used for different encoding string
-            // console.log(data)
-            influxManager.writeApi(clientId, gps, "aqi", data)
-        } else if (topic == sensor_data_rssi) {
-            // console.log('MQTT: Trigger message on ' + topic)
-            data = JSON.parse(payload.toString()) // stringify is used for different encoding string
-            // console.log(data)
-            influxManager.writeApi(clientId, gps, "rss", data)
 
         } else if (topic == switchTopic) {
             console.log('MQTT: Trigger message on ' + switchTopic)
@@ -218,7 +197,7 @@ const updateSetup = (request, response) => {
     response.status(200).json(data)
 }
 
-const httpData = (req) => {
+const httpData = (req, response) => {
 
     let data = req.body
     console.log(req.body)
@@ -244,7 +223,10 @@ const httpData = (req) => {
             default:
                 break;
         }
+
     }
+    response.status(200).json(data);
+
 }
 
 function getOutdoorTemp() {
