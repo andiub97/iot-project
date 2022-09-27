@@ -128,16 +128,11 @@ const switchProtMode = (request, response) => {
     let prot = request.body.protocol
     console.log(prot);
 
+    // 0 == MQTT && 1 == HTTP
     if (prot == 0 || prot == 1) {
-        var switched;
-        if (prot == 0) {
-            switched = 1
-        } else {
-            switched = 0
-        }
         // get data from the body
         let json = {
-            protocol: switched,
+            protocol: prot,
         }
 
         // publish data on sensors network
