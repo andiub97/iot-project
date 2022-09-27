@@ -43,6 +43,7 @@ const sensor_data_all = "sensor/data/all";
 
 
 const switchTopic = "sensor/change/prot" // switch response channel to swap from CoAP to MQTT or vice versa
+const evaluationMode = "sensor/change/eval_mode";
 const changeVars = "sensor/change/vars";
 
 const gps = {
@@ -121,7 +122,7 @@ init = () => {
     })
 }
 
-const switchMode = (request, response) => {
+const switchProtMode = (request, response) => {
     console.log('Invoke Switching Mode...')
 
     let prot = request.body.protocol
@@ -196,6 +197,37 @@ const updateSetup = (request, response) => {
     }
     response.status(200).json(data)
 }
+
+const switchEvalMode = (request, response) => {
+
+    var mode = request.body.mode
+
+
+    if (mode == 0 || mode == 1) {
+
+        // get data from the body
+        let json = {
+            mode: mode,
+        }
+
+        // publish data on sensors network
+        client.publish(switchTopic, JSON.stringify(json), { qos: 1 }, (e) => {
+            if (e) {
+                console.log('Error during publishing on ' + evaluationMode)
+            } else {
+                console.log('Publish successful on ' + evaluationMode)
+            }
+        })
+    } else {
+        console.log('Switch Mode: Error, evaluation mode value are not acceptable.')
+        response.status(500).json(json)
+    }
+    // send response
+    response.status(200).json(json)
+}
+
+
+
 
 const httpData = (req, response) => {
 
@@ -400,7 +432,8 @@ forwardData = (data) => {
 module.exports = {
 
     updateSetup,
-    switchMode,
+    switchProtMode,
+    switchEvalMode,
     httpData,
     getOutdoorTemp,
     getNewUsers,
