@@ -17,13 +17,14 @@ String serverName = "http://" + String(serverIP) + "/data";
 const char *sensor_change_vars = "sensor/change/vars"; // setup topic to change metadata
 const char *sensor_change_prot = "sensor/change/prot"; // richiesta di switching di protocollo
 const char *sensor_data_all = "sensor/data/all";
+const char *evaluation_mode = "sensor/change/eval_mode";
 
 // Initialize DHT sensor
 DHT dht(DHTPIN, DHTTYPE);
 
 // Variables for JSON data switching
 unsigned long previousTime = millis(); // timestamp
-char prot_mode = '1';
+char prot_mode = '0';
 int PROTOCOL = 0;
 const int capacity = JSON_OBJECT_SIZE(192); // capacity size
 StaticJsonDocument<capacity> doc; // Json for data communication
@@ -42,6 +43,7 @@ int AQI = INIT_AQI; // AQI value
 int gas_values[5] = {NULL, NULL, NULL, NULL, NULL}; // status of gas values
 float gas_avg = 0; //gas avg during AQI computation
 unsigned long previousMillis = 0;   // Stores last time temperature was published
+bool eval_mode = false;
 
 WiFiClient clientMQTT;
 WiFiClient clientHTTP;
@@ -65,14 +67,15 @@ void callbackMQTT(char *topic, byte *payload, unsigned int length) {
 
     Serial.println("---------------");
     Serial.println("change protocol");
+    // 0 == MQTT && 1 == HTTP
     PROTOCOL = docSwitch["protocol"];
     Serial.println(PROTOCOL);
-    if (PROTOCOL == 0) {
-      prot_mode = '1';
-      
-    } else if (PROTOCOL == 1) {
-//      STOP_EVALUATE_MQTT;  
-      prot_mode = '2';
+    if (prot_mode == 0 && PROTOCOL == 1) {
+      prot_mode = 1
+                  STOP_EVALUATE_MQTT;
+      print_stats();
+    } else if  (prot_mode == 1 && PROTOCOL == 0) {
+      prot_mode = 0
     }
   }
 
@@ -103,6 +106,14 @@ void callbackMQTT(char *topic, byte *payload, unsigned int length) {
       MAX_GAS_VALUE = maxGas;
     }
   }
+  // handling the request for switching the protocol
+  if (!strcmp(topic, evaluation_mode)) {
+    if (eval_mode == false) {
+      eval_mode = true;
+    } else {
+      eval_mode = false;
+    }
+  }
 }
 
 // --------- MQTT setup ---------------------------
@@ -112,8 +123,9 @@ void MQTTSetup() {
   while (!MQTT.connected()) {
     if (MQTT.connect("ESP32Client", mqtt_username, mqtt_password)) {
       Serial.println("Public emqx mqtt broker connected");
-      MQTT.subscribe("sensor/change/prot"); // change vars
+      MQTT.subscribe("sensor/change/prot"); // change prot
       MQTT.subscribe("sensor/change/vars"); // change vars
+      MQTT.subscribe("sensor/change/eval_mode"); // change evaluation mode
 
     } else {
       // connection error handler
@@ -134,6 +146,8 @@ void reconnectMQTT(void)
       delay(5000);
       // Subscribe
       MQTT.subscribe(sensor_change_prot);
+      MQTT.subscribe("sensor/change/vars");
+      MQTT.subscribe("sensor/change/eval_mode");
     } else {
       Serial.print("failed, rc=");
       Serial.println(" try again in 5 seconds");
@@ -150,10 +164,10 @@ void setup() {
   preferences.putString("lat", lat );
   preferences.putString("long", lon );
   dht.begin();
-  
+
   Serial.println("Connecting to ");
   Serial.println(WIFI_SSID);
-  
+
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   WiFi.mode(WIFI_STA);
 
@@ -191,115 +205,112 @@ void loop() {
   // Wifi
   rssi = WiFi.RSSI();
 
-  unsigned long currentMillis = millis();
 
-  if (currentMillis - previousMillis >= SAMPLE_FREQUENCY) {
-    previousMillis = currentMillis;
+  // New sensors' readings
+  hum = dht.readHumidity();
+  temp = dht.readTemperature();
 
-    // New sensors' readings
-    hum = dht.readHumidity();
-    temp = dht.readTemperature();
+  //     Check if any reads failed and exit early (to try again).
+  if (isnan(temp) || isnan(hum)) {
+    Serial.println(F("Failed to read from DHT sensor!"));
+    return;
+  }
 
-//     Check if any reads failed and exit early (to try again).
-    if (isnan(temp) || isnan(hum)) {
-      Serial.println(F("Failed to read from DHT sensor!"));
-      return;
+  int gas_current_value = analogRead(MQ2PIN);
+
+  int i = 0;
+  while (i < 5) {
+    if (gas_values[i] == NULL) {
+      gas_values[i] = gas_current_value;
+      i = 5;
+    } else {
+      i += 1;
+    }
+  }
+
+  // AQI computation
+  if (gas_values[4] != NULL) {
+
+    for (int c = 0; c < 5; c++) {
+      gas_avg += gas_values[c];
     }
 
-    int gas_current_value = analogRead(MQ2PIN);
+    gas_avg = gas_avg / 5;
+    Serial.print("Gas avg: ");
+    Serial.println(String(gas_avg).c_str());
 
-    int i = 0;
-    while (i < 5) {
-      if (gas_values[i] == NULL) {
-        gas_values[i] = gas_current_value;
-        i = 5;
-      } else {
-        i += 1;
-      }
+    if (gas_avg >= MAX_GAS_VALUE) {
+      AQI = 1;
+    } else if ((gas_avg >= MIN_GAS_VALUE) && (gas_avg < MAX_GAS_VALUE)) {
+      AQI = 0;
+    } else {
+      AQI = 2;
     }
 
-    // AQI computation
-    if (gas_values[4] != NULL) {
-
-      for (int c = 0; c < 5; c++) {
-        gas_avg += gas_values[c];
-      }
-
-      gas_avg = gas_avg / 5;
-      Serial.print("Gas avg: ");
-      Serial.println(String(gas_avg).c_str());
-
-      if (gas_avg >= MAX_GAS_VALUE) {
-        AQI = 1;
-      } else if ((gas_avg >= MIN_GAS_VALUE) && (gas_avg < MAX_GAS_VALUE)) {
-        AQI = 0;
-      } else {
-        AQI = 2;
-      }
-
-      gas_avg = 0;
-      for (int c = 0; c < 5; c++) {
-        gas_values[c] = NULL;
-      }
+    gas_avg = 0;
+    for (int c = 0; c < 5; c++) {
+      gas_values[c] = NULL;
     }
+  }
 
-    Serial.printf("Temp: %.2f \n", temp);
-    Serial.printf("Hum: %.2f \n", hum);
-    Serial.print("Gas: ");
-    Serial.println(String(gas_current_value).c_str());
+  Serial.printf("Temp: %.2f \n", temp);
+  Serial.printf("Hum: %.2f \n", hum);
+  Serial.print("Gas: ");
+  Serial.println(String(gas_current_value).c_str());
 
 
 
-    // verify protocol mode and execute the sending
-    if (prot_mode == '1') {
-      Serial.println("Protocol: MQTT");
-      // Publish an MQTT message on each sensor data topic
-      doc["gps"]["lat"] = preferences.getString("lat");
-      doc["gps"]["lng"] = preferences.getString("long");
-      doc["rss"] = rssi;
-      doc["temp"] = temp;
-      doc["hum"] = hum;
-      doc["gasv"]["gas"] = gas_current_value;
+  // verify protocol mode and execute the sending
+  if (prot_mode == '0') {
+    Serial.println("Protocol: MQTT");
+    // Publish an MQTT message on each sensor data topic
+    doc["gps"]["lat"] = preferences.getString("lat");
+    doc["gps"]["lng"] = preferences.getString("long");
+    doc["rss"] = rssi;
+    doc["temp"] = temp;
+    doc["hum"] = hum;
+    doc["gasv"]["gas"] = gas_current_value;
 
-      if (AQI != -1) {
-        doc["gasv"]["AQI"] = AQI;
-        AQI = -1;
-      }
-      serializeJson(doc, buffer_ff);
-//      START_EVALUATE_MQTT(MQTT.publish(sensor_data_all, buffer_ff));
-//      print_stats();
-      
+    if (AQI != -1) {
+      doc["gasv"]["AQI"] = AQI;
+      AQI = -1;
+    }
+    serializeJson(doc, buffer_ff);
+    START_EVALUATE_MQTT(MQTT.publish(sensor_data_all, buffer_ff));
 
-    } else if (prot_mode == '2') {
-      Serial.println("Protocol: HTTP");
-      HTTPClient http;
-      http.begin(clientHTTP, serverName);
+  } else if (prot_mode == '1') {
+    Serial.println("Protocol: HTTP");
+    HTTPClient http;
+    http.begin(clientHTTP, serverName);
 
-      // Setting header content type: text/plain
-      http.addHeader("Content-Type", "application/json");
+    // Setting header content type: text/plain
+    http.addHeader("Content-Type", "application/json");
 
-      // Send sensor data in post requests
-      doc["gps"]["lat"] = preferences.getString("lat");
-      doc["gps"]["lng"] = preferences.getString("long");
-      doc["rss"] = rssi;
-      doc["temp"] = temp;
-      doc["hum"] = hum;
-      doc["gasv"]["gas"] = gas_current_value;
+    // Send sensor data in post requests
+    doc["gps"]["lat"] = preferences.getString("lat");
+    doc["gps"]["lng"] = preferences.getString("long");
+    doc["rss"] = rssi;
+    doc["temp"] = temp;
+    doc["hum"] = hum;
+    doc["gasv"]["gas"] = gas_current_value;
 
-      if (AQI != -1) {
-        doc["gasv"]["AQI"] = AQI;
-        AQI = -1;
-      }
-      serializeJson(doc, buffer_ff);
+    if (AQI != -1) {
+      doc["gasv"]["AQI"] = AQI;
+      AQI = -1;
+    }
+    serializeJson(doc, buffer_ff);
+    if (eval_mode == true) {
       EVALUATE_HTTP(http.POST(buffer_ff));
       print_stats();
-
-      http.end();
+    } else {
+      http.POST(buffer_ff)
     }
 
-    if (prot_mode != '2')Serial.println("--------------------------");
-    // customized delay based on the runtime setup
-    if (prot_mode != '2')delay(SAMPLE_FREQUENCY);
+    http.end();
   }
+
+  if (prot_mode != '1')Serial.println("--------------------------");
+  // customized delay based on the runtime setup
+  delay(SAMPLE_FREQUENCY);
 
 }
