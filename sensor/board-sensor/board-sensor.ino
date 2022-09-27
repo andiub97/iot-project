@@ -266,6 +266,7 @@ void loop() {
         AQI = -1;
       }
       serializeJson(doc, buffer_ff);
+      MQTT.publish(sensor_data_all, buffer_ff);
 //      START_EVALUATE_MQTT(MQTT.publish(sensor_data_all, buffer_ff));
 //      print_stats();
       
