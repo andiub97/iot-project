@@ -15,8 +15,8 @@ prots.init()
 
 
 // ----- Express setup -----
-const portHttp = 80
-const host = '127.0.0.1'
+const portHttp = process.env.SERVER_PORT
+const host = process.env.SERVER_HOST
 const router = express.Router();
 const app = express()
 
