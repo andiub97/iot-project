@@ -42,8 +42,8 @@ var client = null
 const sensor_data_all = "sensor/data/all";
 
 
-const switchTopic = "sensor/change/prot" // switch response channel to swap from CoAP to MQTT or vice versa
-const evaluationMode = "sensor/change/eval_mode";
+const switchProtTopic = "sensor/change/prot" // switch response channel to swap from CoAP to MQTT or vice versa
+const switchEvalTopic = "sensor/change/eval_mode";
 const changeVars = "sensor/change/vars";
 
 const gps = {
@@ -79,7 +79,8 @@ init = () => {
             console.log('MQTT Error: ' + e)
         }
         console.log('Subscription to ', sensor_data_all + ' : Success')
-        console.log('Subscription to ', switchTopic + '  : Success')
+        console.log('Subscription to ', switchProtTopic + '  : Success')
+        console.log('Subscription to ', switchEvalTopic + '  : Success')
         console.log('---------------------')
     })
 
@@ -112,10 +113,12 @@ init = () => {
                 }
 
             }
-
-
-        } else if (topic == switchTopic) {
-            console.log('MQTT: Trigger message on ' + switchTopic)
+        } else if (topic == switchProtTopic) {
+            console.log('MQTT: Trigger message on ' + switchProtTopic)
+            data = JSON.parse(payload.toString('utf-8'))
+            console.log(data)
+        } else if (topic == switchEvalTopic) {
+            console.log('MQTT: Trigger message on ' + switchEvalTopic)
             data = JSON.parse(payload.toString('utf-8'))
             console.log(data)
         }
@@ -136,15 +139,15 @@ const switchProtMode = (request, response) => {
         }
 
         // publish data on sensors network
-        client.publish(switchTopic, JSON.stringify(json), { qos: 1 }, (e) => {
+        client.publish(switchProtTopic, JSON.stringify(json), { qos: 1 }, (e) => {
             if (e) {
-                console.log('Error during publishing on ' + switchTopic)
+                console.log('Error during publishing on ' + switchProtTopic)
             } else {
-                console.log('Publish successful on ' + switchTopic)
+                console.log('Publish successful on ' + switchProtTopic)
             }
         })
     } else {
-        console.log('Switch Mode: Error, protocol value are not acceptable.')
+        console.log('Switch Prot Mode: Error, protocol value are not acceptable.')
         response.status(500).json(json)
     }
     // send response
@@ -197,7 +200,6 @@ const switchEvalMode = (request, response) => {
 
     var mode = request.body.mode
 
-
     if (mode == 0 || mode == 1) {
 
         // get data from the body
@@ -206,11 +208,11 @@ const switchEvalMode = (request, response) => {
         }
 
         // publish data on sensors network
-        client.publish(switchTopic, JSON.stringify(json), { qos: 1 }, (e) => {
+        client.publish(switchEvalTopic, JSON.stringify(json), { qos: 1 }, (e) => {
             if (e) {
-                console.log('Error during publishing on ' + evaluationMode)
+                console.log('Error during publishing on ' + switchEvalTopic)
             } else {
-                console.log('Publish successful on ' + evaluationMode)
+                console.log('Publish successful on ' + switchEvalTopic)
             }
         })
     } else {
