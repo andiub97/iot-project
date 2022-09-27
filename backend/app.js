@@ -45,7 +45,10 @@ app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerFile))
 app.post('/update-setup', prots.updateSetup)
 
 // switch mode
-app.post('/switch-mode', prots.switchMode)
+app.post('/switch-prot-mode', prots.switchProtMode)
+
+// switch mode
+app.post('/switch-eval-mode', prots.switchEvalMode)
 
 app.post('/data', prots.httpData)
 

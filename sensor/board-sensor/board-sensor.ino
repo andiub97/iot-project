@@ -25,7 +25,6 @@ DHT dht(DHTPIN, DHTTYPE);
 // Variables for JSON data switching
 unsigned long previousTime = millis(); // timestamp
 char prot_mode = '0';
-int PROTOCOL = 0;
 const int capacity = JSON_OBJECT_SIZE(192); // capacity size
 StaticJsonDocument<capacity> doc; // Json for data communication
 char buffer_ff[sizeof(doc)]; // buffer for JSON message for CoAP and MQTT payload
@@ -68,14 +67,17 @@ void callbackMQTT(char *topic, byte *payload, unsigned int length) {
     Serial.println("---------------");
     Serial.println("change protocol");
     // 0 == MQTT && 1 == HTTP
-    PROTOCOL = docSwitch["protocol"];
+    int PROTOCOL = docSwitch["protocol"];
     Serial.println(PROTOCOL);
-    if (prot_mode == 0 && PROTOCOL == 1) {
-      prot_mode = 1
-                  STOP_EVALUATE_MQTT;
-      print_stats();
-    } else if  (prot_mode == 1 && PROTOCOL == 0) {
-      prot_mode = 0
+    if (prot_mode == '0' && PROTOCOL == 1) {
+      prot_mode = 1;
+      if (eval_mode == true) {
+         STOP_EVALUATE_MQTT;
+         print_stats();
+      }
+
+    } else if (prot_mode == '1' && PROTOCOL == 0) {
+      prot_mode = 0;
     }
   }
 
@@ -181,7 +183,9 @@ void setup() {
   Serial.println("WiFi connected");
 
   MQTTSetup();
-  init_evaluation_vars();
+  if(!eval_mode) {
+    init_evaluation_vars();
+  }
 
 }
 
@@ -258,8 +262,6 @@ void loop() {
   Serial.print("Gas: ");
   Serial.println(String(gas_current_value).c_str());
 
-
-
   // verify protocol mode and execute the sending
   if (prot_mode == '0') {
     Serial.println("Protocol: MQTT");
@@ -303,13 +305,13 @@ void loop() {
       EVALUATE_HTTP(http.POST(buffer_ff));
       print_stats();
     } else {
-      http.POST(buffer_ff)
+      http.POST(buffer_ff);
     }
 
     http.end();
   }
 
-  if (prot_mode != '1')Serial.println("--------------------------");
+  Serial.println("--------------------------");
   // customized delay based on the runtime setup
   delay(SAMPLE_FREQUENCY);
 
