@@ -1,5 +1,5 @@
 #include <Env.h>
-#include <Evluation.h>
+#include <Evaluation.h>
 #include "DHT.h"
 #include <WiFi.h>
 #include <Preferences.h>
@@ -16,14 +16,7 @@ String serverName = "http://" + String(serverIP) + "/data";
 // ----------- Topics -----------
 const char *sensor_change_vars = "sensor/change/vars"; // setup topic to change metadata
 const char *sensor_change_prot = "sensor/change/prot"; // richiesta di switching di protocollo
-const char *sensor_data_temp = "sensor/data/temperature";
-const char *sensor_data_hum = "sensor/data/humidity";
-const char *sensor_data_rssi = "sensor/data/rssi";
-const char *sensor_data_lat = "sensor/data/latitude";
-const char *sensor_data_long = "sensor/data/longitude";
-const char *sensor_data_gas = "sensor/data/gas";
-const char *sensor_data_aqi = "sensor/data/aqi";
-const char *sensor_data_all = "data";
+const char *sensor_data_all = "sensor/data/all";
 
 // Initialize DHT sensor
 DHT dht(DHTPIN, DHTTYPE);
@@ -48,7 +41,6 @@ int MAX_GAS_VALUE = INIT_MAX_GAS; // maximum gas value corresponding to the lowe
 int AQI = INIT_AQI; // AQI value
 int gas_values[5] = {NULL, NULL, NULL, NULL, NULL}; // status of gas values
 float gas_avg = 0; //gas avg during AQI computation
-int count = 0;
 unsigned long previousMillis = 0;   // Stores last time temperature was published
 
 WiFiClient clientMQTT;
@@ -77,7 +69,9 @@ void callbackMQTT(char *topic, byte *payload, unsigned int length) {
     Serial.println(PROTOCOL);
     if (PROTOCOL == 0) {
       prot_mode = '1';
+      
     } else if (PROTOCOL == 1) {
+//      STOP_EVALUATE_MQTT;  
       prot_mode = '2';
     }
   }
@@ -174,6 +168,7 @@ void setup() {
 
   MQTTSetup();
   init_evaluation_vars();
+
 }
 
 void loop() {
@@ -253,21 +248,27 @@ void loop() {
     Serial.print("Gas: ");
     Serial.println(String(gas_current_value).c_str());
 
+
+
     // verify protocol mode and execute the sending
     if (prot_mode == '1') {
       Serial.println("Protocol: MQTT");
       // Publish an MQTT message on each sensor data topic
-      MQTT.publish(sensor_data_temp, String(temp).c_str());
-      MQTT.publish(sensor_data_hum, String(hum).c_str());
-      MQTT.publish(sensor_data_gas, String(gas_current_value).c_str());
-      MQTT.publish(sensor_data_rssi, String(rssi).c_str());
-      MQTT.publish(sensor_data_lat, String(preferences.getString("lat")).c_str());
-      MQTT.publish(sensor_data_long, String(preferences.getString("long")).c_str());
+      doc["gps"]["lat"] = preferences.getString("lat");
+      doc["gps"]["lng"] = preferences.getString("long");
+      doc["rss"] = rssi;
+      doc["temp"] = temp;
+      doc["hum"] = hum;
+      doc["gasv"]["gas"] = gas_current_value;
 
       if (AQI != -1) {
-        MQTT.publish(sensor_data_aqi, String(AQI).c_str());
+        doc["gasv"]["AQI"] = AQI;
         AQI = -1;
       }
+      serializeJson(doc, buffer_ff);
+//      START_EVALUATE_MQTT(MQTT.publish(sensor_data_all, buffer_ff));
+//      print_stats();
+      
 
     } else if (prot_mode == '2') {
       Serial.println("Protocol: HTTP");
