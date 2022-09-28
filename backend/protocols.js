@@ -40,8 +40,6 @@ const influxManager = new influx.InfluxManager(InfluxData.host, InfluxData.port,
 var client = null
 
 const sensor_data_all = "sensor/data/all";
-
-
 const switchProtTopic = "sensor/change/prot" // switch response channel to swap from CoAP to MQTT or vice versa
 const switchEvalTopic = "sensor/change/eval_mode";
 const changeVars = "sensor/change/vars";
@@ -74,7 +72,8 @@ init = () => {
         console.log('MQTT Subscriptions: ')
         try {
             client.subscribe(sensor_data_all)
-            client.subscribe(switchTopic)
+            client.subscribe(switchProtTopic)
+            client.subscribe(switchEvalTopic)
         } catch (e) {
             console.log('MQTT Error: ' + e)
         }
@@ -232,6 +231,8 @@ const httpData = (req, response) => {
     console.log(req.body)
 
     const gps = data.gps
+    response.status(200).json(data);
+    
     for (const [key, value] of Object.entries(InfluxData.buckets)) {
 
         switch (value) {
@@ -254,7 +255,6 @@ const httpData = (req, response) => {
         }
 
     }
-    response.status(200).json(data);
 
 }
 
@@ -279,39 +279,6 @@ function getOutdoorTemp() {
         })
     });
 }
-
-function createAQICheck() {
-
-    const data = influxManager.AQICheckBody()
-    const options = {
-        hostname: `localhost`,
-        port: InfluxData.port,
-        path: '/api/v2/checks',
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Token ${InfluxData.token}`
-        },
-    };
-
-    const req = http.request(options, res => {
-        console.log(`statusCode: ${res.statusCode}`);
-
-        res.on('data', d => {
-            process.stdout.write(d);
-        });
-    });
-
-    req.on('error', error => {
-        console.error(error);
-    });
-
-    req.write(data);
-    req.end();
-
-}
-
-
 
 const getNewUsers = (req) => {
     console.log(req.body);

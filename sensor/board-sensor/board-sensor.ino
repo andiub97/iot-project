@@ -24,7 +24,7 @@ DHT dht(DHTPIN, DHTTYPE);
 
 // Variables for JSON data switching
 unsigned long previousTime = millis(); // timestamp
-char prot_mode = '0';
+int prot_mode = 0;
 const int capacity = JSON_OBJECT_SIZE(192); // capacity size
 StaticJsonDocument<capacity> doc; // Json for data communication
 char buffer_ff[sizeof(doc)]; // buffer for JSON message for CoAP and MQTT payload
@@ -42,7 +42,7 @@ int AQI = INIT_AQI; // AQI value
 int gas_values[5] = {NULL, NULL, NULL, NULL, NULL}; // status of gas values
 float gas_avg = 0; //gas avg during AQI computation
 unsigned long previousMillis = 0;   // Stores last time temperature was published
-bool eval_mode = false;
+int eval_mode = 0;
 
 WiFiClient clientMQTT;
 WiFiClient clientHTTP;
@@ -69,14 +69,9 @@ void callbackMQTT(char *topic, byte *payload, unsigned int length) {
     // 0 == MQTT && 1 == HTTP
     int PROTOCOL = docSwitch["protocol"];
     Serial.println(PROTOCOL);
-    if (prot_mode == '0' && PROTOCOL == 1) {
+    if (prot_mode == 0 && PROTOCOL == 1) {
       prot_mode = 1;
-      if (eval_mode == true) {
-         STOP_EVALUATE_MQTT;
-         print_stats();
-      }
-
-    } else if (prot_mode == '1' && PROTOCOL == 0) {
+    } else if (prot_mode == 1 && PROTOCOL == 0) {
       prot_mode = 0;
     }
   }
@@ -108,13 +103,22 @@ void callbackMQTT(char *topic, byte *payload, unsigned int length) {
       MAX_GAS_VALUE = maxGas;
     }
   }
-  // handling the request for switching the protocol
+  
+  // handling the request for switching the eval_mode
   if (!strcmp(topic, evaluation_mode)) {
-    if (eval_mode == false) {
-      eval_mode = true;
-    } else {
-      eval_mode = false;
-    }
+    StaticJsonDocument<100> docEval;
+    DeserializationError err = deserializeJson(docEval, bufferfreq);
+    Serial.println("---------------");
+    Serial.println("change eval_mode");
+    // 0 == false && 1 == true
+    eval_mode = docEval["mode"];
+    Serial.println(eval_mode);
+  }
+  
+  //handling the request for loss packets
+  if (strcmp(topic, sensor_data_all) == 0 && eval_mode == 1) {
+    Serial.println("STOP EVAL");
+    STOP_EVALUATE_MQTT;
   }
 }
 
@@ -125,10 +129,11 @@ void MQTTSetup() {
   while (!MQTT.connected()) {
     if (MQTT.connect("ESP32Client", mqtt_username, mqtt_password)) {
       Serial.println("Public emqx mqtt broker connected");
-      MQTT.subscribe("sensor/change/prot"); // change prot
-      MQTT.subscribe("sensor/change/vars"); // change vars
-      MQTT.subscribe("sensor/change/eval_mode"); // change evaluation mode
-
+      // Subscriptions
+      MQTT.subscribe("sensor/change/vars");
+      MQTT.subscribe("sensor/change/prot");
+      MQTT.subscribe("sensor/data/all");
+      MQTT.subscribe("sensor/change/eval_mode");
     } else {
       // connection error handler
       Serial.print("failed with state ");
@@ -146,9 +151,10 @@ void reconnectMQTT(void)
     if (MQTT.connect("ESP32Client", mqtt_username, mqtt_password)) {
       Serial.println("connected");
       delay(5000);
-      // Subscribe
-      MQTT.subscribe(sensor_change_prot);
+      // Subscriptions
       MQTT.subscribe("sensor/change/vars");
+      MQTT.subscribe("sensor/change/prot");
+      MQTT.subscribe("sensor/data/all");
       MQTT.subscribe("sensor/change/eval_mode");
     } else {
       Serial.print("failed, rc=");
@@ -181,11 +187,13 @@ void setup() {
   }
   Serial.println("");
   Serial.println("WiFi connected");
-
-  MQTTSetup();
-  if(!eval_mode) {
+  
+  if (eval_mode == 0) {
     init_evaluation_vars();
   }
+  
+  MQTTSetup();
+
 
 }
 
@@ -263,7 +271,8 @@ void loop() {
   Serial.println(String(gas_current_value).c_str());
 
   // verify protocol mode and execute the sending
-  if (prot_mode == '0') {
+  if (prot_mode == 0) {
+
     Serial.println("Protocol: MQTT");
     // Publish an MQTT message on each sensor data topic
     doc["gps"]["lat"] = preferences.getString("lat");
@@ -278,9 +287,14 @@ void loop() {
       AQI = -1;
     }
     serializeJson(doc, buffer_ff);
-    START_EVALUATE_MQTT(MQTT.publish(sensor_data_all, buffer_ff));
+    if (eval_mode == 1) {
+      Serial.println("START EVAL");
+      START_EVALUATE_MQTT(MQTT.publish(sensor_data_all, buffer_ff));
+    } else {
+      MQTT.publish(sensor_data_all, buffer_ff);
+    }
+  } else if (prot_mode == 1) {
 
-  } else if (prot_mode == '1') {
     Serial.println("Protocol: HTTP");
     HTTPClient http;
     http.begin(clientHTTP, serverName);
@@ -301,15 +315,21 @@ void loop() {
       AQI = -1;
     }
     serializeJson(doc, buffer_ff);
-    if (eval_mode == true) {
+    if (eval_mode == 1) {
       EVALUATE_HTTP(http.POST(buffer_ff));
-      print_stats();
     } else {
       http.POST(buffer_ff);
     }
 
     http.end();
   }
+
+  Serial.println("--------------------------");
+
+  if (eval_mode == 1) {
+    print_stats();
+  }
+
 
   Serial.println("--------------------------");
   // customized delay based on the runtime setup
