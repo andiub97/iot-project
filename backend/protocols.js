@@ -231,8 +231,9 @@ const httpData = (req, response) => {
     console.log(req.body)
 
     const gps = data.gps
+
     response.status(200).json(data);
-    
+
     for (const [key, value] of Object.entries(InfluxData.buckets)) {
 
         switch (value) {
