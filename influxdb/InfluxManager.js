@@ -25,6 +25,7 @@ class InfluxManager {
             // value = Math.round(value, 2)
         }
         writeApi.writePoint(point)
+        
 
         writeApi.close()
             .then(() => {

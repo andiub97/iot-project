@@ -18,12 +18,14 @@ extern "C" {
 }
 
 // HTTP Server
-String serverName = "http://" + String(serverIP) + "/data";
+String url_data = "http://" + String(serverIP) + "/data";
+String url_packages_info = "http://" + String(serverIP) + "/info-packages";
 
 // ----------- Topics -----------
 const char *sensor_change_vars = "sensor/change/vars"; // setup topic to change metadata
 const char *sensor_change_prot = "sensor/change/prot"; // richiesta di switching di protocollo
 const char *sensor_data_all = "sensor/data/all";
+const char *sensor_info_packages = "sensor/info/packages";
 const char *evaluation_mode = "sensor/change/eval_mode";
 
 // Initialize DHT sensor
@@ -33,7 +35,9 @@ DHT dht(DHTPIN, DHTTYPE);
 int prot_mode = 0;
 const int capacity = JSON_OBJECT_SIZE(192); // capacity size
 StaticJsonDocument<capacity> doc; // Json for data communication
+StaticJsonDocument<capacity> docStats; // Json for data communication
 char buffer_ff[sizeof(doc)]; // buffer for JSON message for CoAP and MQTT payload
+char buffer_ip[sizeof(docStats)];
 
 // Variables to hold sensor readings
 float temp;
@@ -46,7 +50,7 @@ int MAX_GAS_VALUE = INIT_MAX_GAS; // maximum gas value corresponding to the lowe
 int AQI = INIT_AQI; // AQI value
 int gas_values[5] = {NULL, NULL, NULL, NULL, NULL}; // status of gas values
 float gas_avg = 0; //gas avg during AQI computation
-int eval_mode = 1;
+int eval_mode = 0;
 int count = 0;
 // Threds mqtt and wifi
 WiFiClient clientHTTP;
@@ -95,7 +99,8 @@ void onMqttConnect(bool sessionPresent) {
   uint16_t packetIdSubAllData = mqttClient.subscribe(sensor_data_all, 1);
   uint16_t packetIdSubChangeVars = mqttClient.subscribe(sensor_change_vars, 1);
   uint16_t packetIdSubChangeProts = mqttClient.subscribe(sensor_change_prot, 1);
-  uint16_t packetIdSubWEvalMode = mqttClient.subscribe(evaluation_mode, 1);
+  uint16_t packetIdSubEvalMode = mqttClient.subscribe(evaluation_mode, 1);
+  uint16_t packetIdSubInfoPackages = mqttClient.subscribe(sensor_info_packages, 1);
   /*Serial.print("Subscribing at QoS 1, packetId: ");
     Serial.println(packetIdSubAllData);
     Serial.print("Subscribing at QoS 1, packetId: ");
@@ -145,14 +150,16 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
     DeserializationError err = deserializeJson(docSwitch, bufferfreq);
 
     Serial.println("---------------");
-    Serial.println("change protocol");
+    Serial.print("Change protocol to: ");
     // 0 == MQTT && 1 == HTTP
     int PROTOCOL = docSwitch["protocol"];
-    Serial.println(PROTOCOL);
+
     if (prot_mode == 0 && PROTOCOL == 1) {
       prot_mode = 1;
+      Serial.println("Http.");
     } else if (prot_mode == 1 && PROTOCOL == 0) {
       prot_mode = 0;
+      Serial.println("Mqtt.");
     }
   }
 
@@ -160,7 +167,7 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
   if (!strcmp(topic, sensor_change_vars)) {
     StaticJsonDocument<200> varsJ;
     DeserializationError err = deserializeJson(varsJ, bufferfreq);
-    Serial.println("update setup");
+    Serial.println("Change variables to: ");
     long int sampleFrequency = varsJ["sampleFrequency"];
     int minGas = varsJ["minGas"];
     int maxGas = varsJ["maxGas"];
@@ -189,17 +196,29 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
     StaticJsonDocument<100> docEval;
     DeserializationError err = deserializeJson(docEval, bufferfreq);
     Serial.println("---------------");
-    Serial.println("change eval_mode");
+    Serial.print("Change eval_mode to: ");
     // 0 == false && 1 == true
     eval_mode = docEval["mode"];
     if (eval_mode == 0) {
+      Serial.println("False.");
       init_evaluation_vars();
+    }
+    else {
+      Serial.println("True.");
     }
   }
 
   //handling the request for loss packets
   if (strcmp(topic, sensor_data_all) == 0 && eval_mode == 1) {
     STOP_EVALUATE_MQTT;
+    if (eval_mode == 1 && count % 5 == 0) {
+      print_stats();
+      docStats["gps"]["lat"] = preferences.getString("lat");
+      docStats["gps"]["lng"] = preferences.getString("long");
+      docStats["rec_tot_packages_count"] = String(received_mqtt_packet_count) + "/" + String(total_mqtt_packet_count);
+      serializeJson(docStats, buffer_ip);
+      mqttClient.publish(sensor_info_packages, 1, true, buffer_ip);
+    }
   }
 }
 
@@ -221,7 +240,6 @@ void setup() {
 
   mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000), pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(connectToMqtt));
   wifiReconnectTimer = xTimerCreate("wifiTimer", pdMS_TO_TICKS(2000), pdFALSE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(connectToWifi));
-
   WiFi.onEvent(WiFiEvent);
 
   mqttClient.onConnect(onMqttConnect);
@@ -323,7 +341,7 @@ void loop() {
 
       Serial.println("Protocol: HTTP");
       HTTPClient http;
-      http.begin(clientHTTP, serverName);
+      http.begin(clientHTTP, url_data);
 
       // Setting header content type: text/plain
       http.addHeader("Content-Type", "application/json");
@@ -348,15 +366,20 @@ void loop() {
         http.POST(buffer_ff);
       }
 
+      if (eval_mode == 1 && count % 5 == 0) {
+        print_stats();
+        http.begin(clientHTTP, url_packages_info);
+        
+        docStats["gps"]["lat"] = preferences.getString("lat");
+        docStats["gps"]["lng"] = preferences.getString("long");
+        docStats["rec_tot_packages_count"] = String(received_http_packet_count) + "/" + String(total_http_packet_count);
+        serializeJson(docStats, buffer_ip);
+        http.POST(buffer_ip);
+
+      }
       http.end();
     }
-    Serial.println("--------------------------");
     count++;
-    if (eval_mode == 1 && count == 5) {
-      print_stats();
-      count = 0;
-    }
-
     Serial.println("--------------------------");
   }
 }

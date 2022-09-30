@@ -50,6 +50,9 @@ app.post('/switch-prot-mode', prots.switchProtMode)
 // switch mode
 app.post('/switch-eval-mode', prots.switchEvalMode)
 
+// info packages
+app.post('/info-packages', prots.infoPackagesHTTP)
+
 app.post('/data', prots.httpData)
 
 app.post('/newTelegramUser', prots.getNewUsers)

@@ -12,7 +12,7 @@ const hostMqtt = process.env.MQTT_HOST // Broker Mosquitto
 const portMqtt = process.env.MQTT_PORT // listen port for MQTT
 const clientId = process.env.SENSOR_CLIENT_ID // subscriber id
 const connectUrl = `mqtt://${hostMqtt}:${portMqtt}` // url for connection
-
+let prot_mode = 0
 // ----- OpenWeatherAPI metadata -----
 const API_WEATHER_KEY = process.env.OPEN_WEATHER_KEY;
 
@@ -30,6 +30,8 @@ const InfluxData = {
         hum: 'humidity',
         rss: 'rss',
         gas: 'gas',
+        info_packages_mqtt: 'info_packages_mqtt',
+        info_packages_http: 'info_packages_http',
     },
 }
 
@@ -43,6 +45,7 @@ const sensor_data_all = "sensor/data/all";
 const switchProtTopic = "sensor/change/prot" // switch response channel to swap from CoAP to MQTT or vice versa
 const switchEvalTopic = "sensor/change/eval_mode";
 const changeVars = "sensor/change/vars";
+const infoPackages = "sensor/info/packages";
 
 const gps = {
     lat: process.env.GPS_LAT,
@@ -74,12 +77,14 @@ init = () => {
             client.subscribe(sensor_data_all)
             client.subscribe(switchProtTopic)
             client.subscribe(switchEvalTopic)
+            client.subscribe(infoPackages)
         } catch (e) {
             console.log('MQTT Error: ' + e)
         }
         console.log('Subscription to ', sensor_data_all + ' : Success')
         console.log('Subscription to ', switchProtTopic + '  : Success')
         console.log('Subscription to ', switchEvalTopic + '  : Success')
+        console.log('Subscription to ', infoPackages + '  : Success')
         console.log('---------------------')
     })
 
@@ -120,6 +125,16 @@ init = () => {
             console.log('MQTT: Trigger message on ' + switchEvalTopic)
             data = JSON.parse(payload.toString('utf-8'))
             console.log(data)
+        } else if (topic == infoPackages) {
+            console.log('MQTT: Trigger message on ' + infoPackages)
+            data = JSON.parse(payload.toString())
+            const gps = data.gps
+            // Write data in 'info_packages_MQTT.txt' .
+            fs.writeFile('../info_packages_MQTT.txt', "Rec/Tot MQTT packages: "+data.rec_tot_packages_count, (err) => {
+                // In case of a error throw err.
+            if (err) throw err;
+            })
+            //influxManager.writeApi(clientId, gps, InfluxData.buckets.info_packages_mqtt, data.rec_tot_packages_count)
         }
     })
 }
@@ -129,9 +144,10 @@ const switchProtMode = (request, response) => {
 
     let prot = request.body.protocol
     console.log(prot);
-
+    
     // 0 == MQTT && 1 == HTTP
     if (prot == 0 || prot == 1) {
+        prot_mode = prot
         // get data from the body
         let json = {
             protocol: prot,
@@ -174,7 +190,7 @@ const updateSetup = (request, response) => {
     else {
 
         if (data.minGas != undefined && data.minGas != null) {
-            console.log('HTTP: Received MIN_GAS_VALUE from the dashboard: ' + data.maxGas)
+            console.log('HTTP: Received MIN_GAS_VALUE from the dashboard: ' + data.minGas)
         } else {
             data.minGas = -1;
         }
@@ -223,17 +239,13 @@ const switchEvalMode = (request, response) => {
 }
 
 
-
-
 const httpData = (req, response) => {
 
     let data = req.body
     console.log(req.body)
 
     const gps = data.gps
-
-    response.status(200).json(data);
-
+    
     for (const [key, value] of Object.entries(InfluxData.buckets)) {
 
         switch (value) {
@@ -251,12 +263,14 @@ const httpData = (req, response) => {
                 break;
             case "rss": influxManager.writeApi(clientId, gps, value, data.rss)
                 break;
+            case "info_packages":influxManager.writeApi(clientId, gps, value, data.received_http_packet_count + " "+ data.total_http_packet_count)
             default:
                 break;
         }
 
     }
-
+    
+    response.status(200).json(data);
 }
 
 function getOutdoorTemp() {
@@ -337,6 +351,22 @@ const sendAlertMessageTelegram = (req) => {
 
 }
 
+const infoPackagesHTTP = (req,res) => {
+    let data = req.body
+    console.log(data)
+    const gps = data.gps
+    savePackagesInfo(data)
+}
+
+function savePackagesInfo (data) {
+
+// Write data in 'info_packages_HTTP.txt' .
+fs.writeFile('../info_packages_HTTP.txt', "Rec/Tot HTTP packages: "+ data.rec_tot_packages_count, (err) => {
+      // In case of a error throw err.
+    if (err) throw err;
+})
+}
+
 function sendReq(id, mess) {
     options = {
         hostname: 'api.telegram.org',
@@ -403,6 +433,7 @@ module.exports = {
     getOutdoorTemp,
     getNewUsers,
     sendAlertMessageTelegram,
+    infoPackagesHTTP,
     init,
 
 }
