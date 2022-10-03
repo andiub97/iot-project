@@ -127,14 +127,19 @@ init = () => {
             console.log(data)
         } else if (topic == infoPackages) {
             console.log('MQTT: Trigger message on ' + infoPackages)
-            data = JSON.parse(payload.toString())
-            const gps = data.gps
-            // Write data in 'info_packages_MQTT.txt' .
-            fs.writeFile('../info_packages_MQTT.txt', "Rec/Tot MQTT packages: "+data.rec_tot_packages_count, (err) => {
-                // In case of a error throw err.
-            if (err) throw err;
-            })
-            //influxManager.writeApi(clientId, gps, InfluxData.buckets.info_packages_mqtt, data.rec_tot_packages_count)
+            s = JSON.parse(payload.toString())
+            // Read data from 'info_packages_HTTP.txt' .
+            const read = fs.readFile('../utils/info_packages_MQTT.txt', (err, data) => {
+                if (err) {
+                    throw err;
+                }
+                else {
+                    fs.writeFile('../utils/info_packages_MQTT.txt', data + "Rec/Tot MQTT packages: " + s.rec_tot_packages_count +"\n", (err) => {
+                    // In case of a error throw err.
+                    if (err) throw err;
+                    })
+                }
+                });
         }
     })
 }
@@ -298,7 +303,7 @@ function getOutdoorTemp() {
 const getNewUsers = (req) => {
     console.log(req.body);
 
-    fs.readFile('../telegram_file.json', function (error, data) {
+    fs.readFile('../utils/telegram_file.json', function (error, data) {
 
         if (error) {
             throw error;
@@ -306,7 +311,7 @@ const getNewUsers = (req) => {
         const content = JSON.parse(data)
         console.log(content)
         let res = writeContent(content)
-        fs.writeFile("../telegram_file.json", JSON.stringify(res), function (err) {
+        fs.writeFile("../utils/telegram_file.json", JSON.stringify(res), function (err) {
             if (err) {
                 console.log("error ", err);
             }
@@ -340,31 +345,28 @@ const getNewUsers = (req) => {
 
 const sendAlertMessageTelegram = (req) => {
 
-    const data = fs.readFileSync('../telegram_file.json');
+    const data = fs.readFileSync('../utils/telegram_file.json');
     const list = JSON.parse(data);
     const message = req.body._message
     for (i = 0; i < list.length; i++) {
         sendReq(list[i].chat_id, message)
-
     }
-
-
 }
 
 const infoPackagesHTTP = (req,res) => {
-    let data = req.body
-    console.log(data)
-    const gps = data.gps
-    savePackagesInfo(data)
-}
-
-function savePackagesInfo (data) {
-
-// Write data in 'info_packages_HTTP.txt' .
-fs.writeFile('../info_packages_HTTP.txt', "Rec/Tot HTTP packages: "+ data.rec_tot_packages_count, (err) => {
-      // In case of a error throw err.
-    if (err) throw err;
-})
+    let s = req.body
+     // Read data from 'info_packages_HTTP.txt' .
+     const read = fs.readFile('../utils/info_packages_HTTP.txt', (err, data) => {
+        if (err) {
+            throw err;
+        }
+        else {
+            fs.writeFile('../utils/info_packages_HTTP.txt', data + "Rec/Tot HTTP packages: " + s.rec_tot_packages_count +"\n", (err) => {
+                // In case of a error throw err.
+            if (err) throw err;
+            })
+        }
+     });
 }
 
 function sendReq(id, mess) {

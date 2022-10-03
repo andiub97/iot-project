@@ -215,7 +215,7 @@ void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties 
       print_stats();
       docStats["gps"]["lat"] = preferences.getString("lat");
       docStats["gps"]["lng"] = preferences.getString("long");
-      docStats["rec_tot_packages_count"] = String(received_mqtt_packet_count) + "/" + String(total_mqtt_packet_count);
+      docStats["rec_tot_packages_count"] = String(received_mqtt_packet_count) + "/" + String(total_mqtt_packet_count) + " mean time: " + mqtt_mean_time;
       serializeJson(docStats, buffer_ip);
       mqttClient.publish(sensor_info_packages, 1, true, buffer_ip);
     }
@@ -369,12 +369,29 @@ void loop() {
       if (eval_mode == 1 && count % 5 == 0) {
         print_stats();
         http.begin(clientHTTP, url_packages_info);
-        
+        // Setting header content type: text/plain
+        http.addHeader("Content-Type", "application/json");
         docStats["gps"]["lat"] = preferences.getString("lat");
         docStats["gps"]["lng"] = preferences.getString("long");
-        docStats["rec_tot_packages_count"] = String(received_http_packet_count) + "/" + String(total_http_packet_count);
+        docStats["rec_tot_packages_count"] = String(received_http_packet_count) + "/" + String(total_http_packet_count) + " mean time: " + http_mean_times;
         serializeJson(docStats, buffer_ip);
-        http.POST(buffer_ip);
+        int httpResponseCode = http.POST(buffer_ip);
+        if (httpResponseCode > 0) {
+          String response = http.getString();  //Get the response to the request
+          Serial.println(httpResponseCode);   //Print return code
+          Serial.println(response);           //Print request answer
+        } else {
+          Serial.print("Error on sending POST: ");
+          Serial.println(httpResponseCode);
+
+          http.end();
+
+        }
+
+
+
+        
+
 
       }
       http.end();

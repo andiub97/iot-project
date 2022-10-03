@@ -1,1 +1,0 @@
-Rec/Tot MQTT packages: 27/27
