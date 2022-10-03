@@ -171,3 +171,5 @@ dist
 
 *.DS_Store
 sensor/board-sensor/board-sensor.ino
+Dockerfile
+*/forecasting/*
