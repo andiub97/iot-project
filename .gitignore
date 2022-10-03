@@ -82,6 +82,9 @@ web_modules/
 .env.test.local
 .env.production.local
 .env.local
+Env.h
+telegram_file.json
+*.ipynb
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -166,4 +169,5 @@ dist
 # Ignore code-workspaces
 *.code-workspace
 
-# End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,node
+*.DS_Store
+sensor/board-sensor/board-sensor.ino

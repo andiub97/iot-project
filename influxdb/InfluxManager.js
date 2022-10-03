@@ -1,6 +1,6 @@
 const { InfluxDB } = require('@influxdata/influxdb-client')
 const { Point } = require('@influxdata/influxdb-client')
-const { QueryAPI } = require('@influxdata/influxdb-client-apis')
+require('dotenv').config({ path: '../.env' })
 
 class InfluxManager {
     constructor(host, port, token, org) {
@@ -13,7 +13,7 @@ class InfluxManager {
 
     writeApi(clientId, gps, bucket, value) {
         const writeApi = this.client.getWriteApi(this.org, bucket)
-        writeApi.useDefaultTags({ prediction: "no", host: clientId.toString(), lat: gps.lat.toString(), lng: gps.lng.toString() })
+        writeApi.useDefaultTags({ prediction: "no", clientId, lat: gps.lat.toString(), lng: gps.lng.toString() })
         var point = new Point('val')
         if (bucket == undefined || value == null) {
             return false;
@@ -25,6 +25,7 @@ class InfluxManager {
             // value = Math.round(value, 2)
         }
         writeApi.writePoint(point)
+        
 
         writeApi.close()
             .then(() => {
@@ -153,15 +154,65 @@ class InfluxManager {
     }
 
 
+    AQICheckBody() {
+
+        const data = JSON.stringify({
+            description: 'Check dedicated to AQI index',
+            name: 'AQI_CHECK',
+            orgID: process.env.INFLUX_ORG_ID,
+            query:
+            {
+                builderConfig: {
+                    aggregateWindow: {
+                        fillValues: true,
+                        period: "30s"
+                    },
+                    buckets: [
+                        "aqi"
+                    ],
+                    functions: [],
+                    tags: []
+                },
+                editMode: "builder",
+                name: "query",
+                text: `
+                    from(bucket: "aqi")
+                    |> range(start: -30s)
+                    |> filter(fn: (r) => r["_measurement"] == "val")
+                    |> filter(fn: (r) => r["_field"] == "aqi")
+                    |> aggregateWindow(every: 30s, fn: max, createEmpty: false)
+                    `
+            },
+            status: 'active',
+            every: '30s',
+            statusMessageTemplate: 'AQI_alert',
+            thresholds: [
+                {
+                    allValues: false,
+                    level: "WARN",
+                    type: "greater",
+                    value: 0.0
+                },
+            ],
+            type: 'threshold'
+        });
+
+        return data
+
+    }
+
+
+
 }
 
 const InfluxData = {
-    token: 'XsaAgTTIvwmy0G9jrEMf2S2-hQfS2myED2PR_bEsZHoydrfol8qqE-Mnae63BxRDM8qsREHCGYrqsTz0zygdKQ==',
-    host: 'localhost',
-    org: 'iot-org',
-    port: 8086,
+    token: process.env.INFLUX_TOKEN,
+    host: process.env.INFLUX_HOST,
+    org: process.env.INFLUX_ORG,
+    port: process.env.INFLUX_HOST_PORT,
     buckets: {
         temp: 'temperature',
+        out_temp: 'out_temperature',
         aqi: 'aqi',
         hum: 'humidity',
         rss: 'rss',

@@ -1,27 +1,24 @@
 /**
  * app.js is the main module for the proxy server, it is composed by the main communications and API for the sensors and back-end components interconnection. 
- * It provides a front-end dashboard with notification channel on socketio via HTTP and internal multicasting communication with sensors in MQTT and CoAP within 
- * testing modes and forwarding mechanics with InfluxDB and Grafana.
  */
-
-
 // -------- Dependencies --------
 const express = require('express')
 const http = require('http')
 const prots = require('./protocols')
 const bodyParser = require('body-parser')
-const influx = require('../influxdb/InfluxManager')
+const swaggerUi = require('swagger-ui-express')
+const swaggerFile = require('../swagger_output.json')
+require('dotenv').config({ path: '../.env' })
+
 // --------- MQTT setup -------------
 prots.init()
 
 
 // ----- Express setup -----
-
-const portHttp = 8080
-const host = '127.0.0.1'
+const portHttp = process.env.SERVER_PORT
+const host = process.env.SERVER_HOST
+const router = express.Router();
 const app = express()
-
-const influxManager = new influx.InfluxManager(InfluxData.host, InfluxData.port, InfluxData.token, InfluxData.org)
 
 
 // bodyParser for POST
@@ -32,7 +29,7 @@ app.use(
     })
 )
 
-http.createServer(app).listen(8080)
+http.createServer(app).listen(80)
 
 // static directory used to the app
 app.use(express.static(__dirname + "/public", {
@@ -42,18 +39,25 @@ app.use(express.static(__dirname + "/public", {
     maxAge: "30d" // death time
 }));
 
+app.use('/doc', swaggerUi.serve, swaggerUi.setup(swaggerFile))
+
 // update data for sensor via http protocol
 app.post('/update-setup', prots.updateSetup)
 
 // switch mode
-app.post('/switch-mode', prots.switchMode)
+app.post('/switch-prot-mode', prots.switchProtMode)
 
-app.post('/data', function (req, res) {
+// switch mode
+app.post('/switch-eval-mode', prots.switchEvalMode)
 
-    console.log(req.body)
+// info packages
+app.post('/info-packages', prots.infoPackagesHTTP)
 
+app.post('/data', prots.httpData)
 
-})
+app.post('/newTelegramUser', prots.getNewUsers)
+
+app.post('/aqi_alert', prots.sendAlertMessageTelegram)
 
 // listening on http
 app.listen(portHttp, host, () => {
