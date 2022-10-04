@@ -2,3 +2,4 @@ Rec/Tot MQTT packages: 25/25 mean time: 8
 Rec/Tot MQTT packages: 3/3 mean time: 10
 Rec/Tot MQTT packages: 8/8 mean time: 8
 Rec/Tot MQTT packages: 13/13 mean time: 9
+Rec/Tot MQTT packages: null

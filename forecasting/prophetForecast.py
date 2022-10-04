@@ -49,9 +49,9 @@ def calc_forecasting(data):
     result = client.query_api().query(org=INFLUXDB_ORG, query=query)
     print(result)
     # Convert the results to dataframe
-    df = result_to_dataframe(result)
+    #df = result_to_dataframe(result)
     # Convert the results to dataframe
-    df['ds'] = df['ds'].dt.tz_localize(None)
+   # df['ds'] = df['ds'].dt.tz_localize(None)
     #data['ds'] = pd.to_datetime(data['ds']).dt.tz_localize(None)
     # Fit the model by instantiating a new Prophet object and passing in the historical DataFrame
     m = Prophet(
