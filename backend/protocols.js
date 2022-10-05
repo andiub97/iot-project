@@ -4,6 +4,7 @@ const http = require('http')
 const https = require('https')
 const influx = require('../influxdb/InfluxManager')
 const request = require('request')
+
 const fs = require('fs')
 require('dotenv').config({ path: '../.env' })
 
@@ -93,18 +94,17 @@ init = () => {
         if (topic == sensor_data_all) {
             // console.log('MQTT: Trigger message on ' + topic)
             data = JSON.parse(payload.toString()) // stringify is used for different encoding string
-            console.log(data)
             const gps = data.gps
             for (const [key, value] of Object.entries(InfluxData.buckets)) {
 
                 switch (value) {
                     case "temperature":
-                        influxManager.writeApi(clientId, gps, value, data.temp)
+                        influxManager.writeApi(clientId, gps, value, data.temp.toFixed(2))
                         getOutdoorTemp().then(function (temp) {
                             influxManager.writeApi(clientId, gps, "out_temperature", temp)
                         })
                         break;
-                    case "humidity": influxManager.writeApi(clientId, gps, value, data.hum)
+                    case "humidity": influxManager.writeApi(clientId, gps, value, data.hum.toFixed(2))
                         break;
                     case "gas": influxManager.writeApi(clientId, gps, value, data.gasv.gas)
                         break;
@@ -142,6 +142,7 @@ init = () => {
                 });
         }
     })
+    
 }
 
 const switchProtMode = (request, response) => {

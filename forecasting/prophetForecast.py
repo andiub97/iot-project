@@ -22,12 +22,10 @@ logging.basicConfig(
 INFLUXDB_HOST = "localhost"
 INFLUXDB_PORT = "8086"
 INFLUXDB_ORG = "iot_group"
-INFLUXDB_BUCKET = "temperature"
-INFLUXDB_BUCKET_FORECAST = "forecast"
-INFLUXDB_TOKEN = "W6ABceM-xNwEQveu4q-B05l3Wlg8NGJ0nBoRjs1PWVbhQhdF85Rx1Q0LMAkwfrNC7K8YRaJvQ4gchULmpAUoHg=="
+INFLUXDB_TOKEN = "tv86wL8ll2DgIg-vjmbiHD2RWnUNtKYUdEQRabhNZK6Czvwnl4UhJx6qx3dUUY5J-d76oLXnwCwOL7TzytR0UQ=="
 
 SLEEP_TIME = 10
-FIELDS = [ 'temp', 'gas', 'hum', 'soil']
+buckets = [ 'temperature', 'humidity', 'gas']
 
 client = InfluxDBClient(url="http://"+INFLUXDB_HOST+":"+INFLUXDB_PORT, token=INFLUXDB_TOKEN, org=INFLUXDB_ORG)
 
@@ -44,11 +42,11 @@ def loadData ():
     df.head()
     return df;  
 
-def calc_forecasting():
-    query = 'from(bucket: "' + INFLUXDB_BUCKET + '")' \
-        ' |> range(start: -5d)' \
+def calc_forecasting(bucket):
+    query = 'from(bucket: "' + bucket + '")' \
+        ' |> range(start: -1d)' \
         ' |> filter(fn: (r) => r["_measurement"] == "val")' \
-        ' |> filter(fn: (r) => r["_field"] == "temperature")' \
+        ' |> filter(fn: (r) => r["_field"] == "'+bucket+ '")' \
 
     result = client.query_api().query(org=INFLUXDB_ORG, query=query)
     print(result)
@@ -70,20 +68,21 @@ def calc_forecasting():
     m.fit(df)
     # periods specifies the number of time series points you'd like to forecast onto 
     # freq time between points 
-    future = m.make_future_dataframe(periods=60*2, freq= DateOffset(minutes=1))
+    future = m.make_future_dataframe(periods=60, freq= DateOffset(minutes=1))
     forecast = m.predict(future)
     # truncate ds to minutes
     forecast['ds'] = forecast.ds.dt.floor('min')
     lines = [str(forecast["yhat"][d]) for d in range(len(forecast))]
     print(lines)
-    lines = ['val,prediction=yes,clientId=' + str("diubi-esp-32")+",lat=4245,lng=4224"+ " temperature" + '=' + str(forecast["yhat"][d])
-                                    + ' ' + str(int(time.mktime(forecast['ds'][d].timetuple()))) + "000000000" for d in range(len(forecast))]
+    lines = ['val,prediction=yes,clientId=' + str("diubi-esp-32")+",lat=999,lng=999"+ " " + bucket + '=' + str(forecast["yhat"][d])
+                                    + ' ' + str(int(time.mktime(forecast['ds'][d].timetuple())) + 3600*2) + "000000000" for d in range(len(forecast))]
     write_client = client.write_api(write_options=WriteOptions(batch_size=1000, flush_interval=10_000,
                                                             jitter_interval=2_000, retry_interval=5_000, write_type=WriteType.synchronous))
-    write_client.write(INFLUXDB_BUCKET_FORECAST, INFLUXDB_ORG, lines)
-    write_client.__del__()
+    write_client.write(bucket, INFLUXDB_ORG, lines)
 
 
 if __name__ == '__main__':
-    calc_forecasting()
+    for bucket in buckets:
+        calc_forecasting(bucket)
+
     time.sleep(SLEEP_TIME)
