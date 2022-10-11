@@ -12,20 +12,23 @@ from influxdb_client.client.write_api import SYNCHRONOUS
 from fbprophet import Prophet
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
-##from mongo_client import MongoClient
+from dotenv import load_dotenv
+
+load_dotenv ()
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 
-INFLUXDB_HOST = "localhost"
-INFLUXDB_PORT = "8086"
-INFLUXDB_ORG = "iot_group"
-INFLUXDB_TOKEN = "tv86wL8ll2DgIg-vjmbiHD2RWnUNtKYUdEQRabhNZK6Czvwnl4UhJx6qx3dUUY5J-d76oLXnwCwOL7TzytR0UQ=="
+INFLUXDB_HOST = os.getenv("INFLUX_HOST")
+INFLUXDB_PORT = os.getenv("INFLUX_HOST_PORT")
+INFLUXDB_ORG = os.getenv("INFLUX_ORG")
+INFLUXDB_TOKEN = os.getenv("INFLUX_TOKEN")
 
 SLEEP_TIME = 10
-buckets = [ 'temperature', 'humidity', 'gas']
+#buckets = [ 'temperature', 'humidity', 'gas']
+buckets = ['temperature']
 
 client = InfluxDBClient(url="http://"+INFLUXDB_HOST+":"+INFLUXDB_PORT, token=INFLUXDB_TOKEN, org=INFLUXDB_ORG)
 
@@ -44,9 +47,11 @@ def loadData ():
 
 def calc_forecasting(bucket):
     query = 'from(bucket: "' + bucket + '")' \
-        ' |> range(start: -1d)' \
-        ' |> filter(fn: (r) => r["_measurement"] == "val")' \
-        ' |> filter(fn: (r) => r["_field"] == "'+bucket+ '")' \
+            ' |> range(start: 2022-09-26T00:00:00.00Z, stop: 2022-09-28T15:50:00.00Z)' \
+            ' |> filter(fn: (r) => r["_measurement"] == "val")' \
+            ' |> filter(fn: (r) => r["_field"] == "'+bucket+ '")' \
+            ' |> aggregateWindow(every: 3m , fn: mean, createEmpty: false)'\
+            ' |> yield(name: "mean")'\
 
     result = client.query_api().query(org=INFLUXDB_ORG, query=query)
     print(result)
@@ -59,16 +64,16 @@ def calc_forecasting(bucket):
     m = Prophet(
         yearly_seasonality=False,
         weekly_seasonality=False,
-        daily_seasonality=20, # 20
+        daily_seasonality=True, # 20
         n_changepoints=50, # 30
-        changepoint_range=0.8, # 0.8
+        changepoint_range=1, # 0.8
         changepoint_prior_scale=0.5, # 0.5
-        # interval_width=1.0
+        #interval_width=1.0
     )
     m.fit(df)
     # periods specifies the number of time series points you'd like to forecast onto 
     # freq time between points 
-    future = m.make_future_dataframe(periods=60, freq= DateOffset(minutes=1))
+    future = m.make_future_dataframe(periods=60*24*2, freq= DateOffset(minutes=1))
     forecast = m.predict(future)
     # truncate ds to minutes
     forecast['ds'] = forecast.ds.dt.floor('min')
