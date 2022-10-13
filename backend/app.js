@@ -17,7 +17,6 @@ prots.init()
 // ----- Express setup -----
 const portHttp = process.env.SERVER_PORT
 const host = process.env.SERVER_HOST
-const router = express.Router();
 const app = express()
 
 
@@ -57,7 +56,7 @@ app.post('/data', prots.httpData)
 
 app.post('/newTelegramUser', prots.getNewUsers)
 
-app.post('/aqi_alert', prots.sendAlertMessageTelegram)
+// app.post('/aqi_alert', prots.sendAlertMessageTelegram)
 
 // listening on http
 app.listen(portHttp, host, () => {
