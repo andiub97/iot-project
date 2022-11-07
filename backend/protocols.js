@@ -6,6 +6,7 @@ const influx = require('../influxdb/InfluxManager')
 const request = require('request')
 
 const fs = require('fs')
+const { consoleLogger } = require('@influxdata/influxdb-client')
 require('dotenv').config({ path: '../.env' })
 
 
@@ -96,7 +97,7 @@ init = () => {
                 switch (value) {
                     case "temperature":
                         influxManager.writeApi(clientId, gps, value, data.temp.toFixed(2))
-                        getOutdoorTemp().then(function (temp) {
+                        getOutdoorTemp(gps).then(function (temp) {
                             influxManager.writeApi(clientId, gps, "out_temperature", temp)
                         })
                         break;
@@ -253,7 +254,7 @@ const httpData = (req, response) => {
         switch (value) {
             case "temperature":
                 influxManager.writeApi(clientId, gps, value, data.temp)
-                getOutdoorTemp().then(function (temp) {
+                getOutdoorTemp(gps).then(function (temp) {
                     influxManager.writeApi(clientId, gps, "out_temperature", temp)
                 })
                 break;
@@ -275,7 +276,7 @@ const httpData = (req, response) => {
     response.status(200).json(data);
 }
 
-function getOutdoorTemp() {
+function getOutdoorTemp(gps) {
 
     var url = `http://api.openweathermap.org/data/2.5/weather?`
         + `lat=${gps.lat}&lon=${gps.lng}&appid=${API_WEATHER_KEY}`
@@ -344,7 +345,9 @@ const sendAlertMessageTelegram = (req) => {
 
     const data = fs.readFileSync('../utils/telegram_file.json');
     const list = JSON.parse(data);
-    const message = req.body._message
+    const message = req.body._message.toString()
+    console.log(message)
+    console.log(typeof(message))
     for (i = 0; i < list.length; i++) {
         sendReq(list[i].chat_id, message)
     }
@@ -352,6 +355,7 @@ const sendAlertMessageTelegram = (req) => {
 
 const infoPackagesHTTP = (req, res) => {
     let s = req.body
+    console.log(req.body)
     // Read data from 'info_packages_HTTP.txt' .
     const read = fs.readFile('../utils/info_packages_HTTP.txt', (err, data) => {
         if (err) {
@@ -364,12 +368,14 @@ const infoPackagesHTTP = (req, res) => {
             })
         }
     });
+
+    res.status(200).json("ok")
 }
 
 function sendReq(id, mess) {
     options = {
         hostname: 'api.telegram.org',
-        path: `/bot${process.env.ALERT_BOT_KEY}/sendMessage?chat_id=${id}&text=${mess}`,
+        path: encodeURI(`/bot${process.env.ALERT_BOT_KEY}/sendMessage?chat_id=${id}&text=${mess}`),
         method: 'GET',
         headers: {
             'Content-Type': 'application/json'

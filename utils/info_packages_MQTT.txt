@@ -7,3 +7,86 @@ Rec/Tot MQTT packages: null
 Rec/Tot MQTT packages: null
 Rec/Tot MQTT packages: null
 Rec/Tot MQTT packages: null
+Rec/Tot MQTT packages: null
+Rec/Tot MQTT packages: null
+Rec/Tot MQTT packages: null
+Rec/Tot MQTT packages: null
+Rec/Tot MQTT packages: null
+Rec/Tot MQTT packages: 2/2 mean time: 8
+Rec/Tot MQTT packages: 7/7 mean time: 9
+Rec/Tot MQTT packages: 12/12 mean time: 8
+Rec/Tot MQTT packages: 17/17 mean time: 13
+Rec/Tot MQTT packages: 22/22 mean time: 9
+Rec/Tot MQTT packages: 27/27 mean time: 8
+Rec/Tot MQTT packages: 32/32 mean time: 9
+Rec/Tot MQTT packages: 37/37 mean time: 9
+Rec/Tot MQTT packages: 42/42 mean time: 9
+Rec/Tot MQTT packages: 47/47 mean time: 10
+Rec/Tot MQTT packages: 52/52 mean time: 11
+Rec/Tot MQTT packages: 57/57 mean time: 8
+Rec/Tot MQTT packages: 62/62 mean time: 9
+Rec/Tot MQTT packages: 67/67 mean time: 9
+Rec/Tot MQTT packages: 72/72 mean time: 10
+Rec/Tot MQTT packages: 77/77 mean time: 8
+Rec/Tot MQTT packages: 82/82 mean time: 9
+Rec/Tot MQTT packages: 88/87 mean time: 426089
+Rec/Tot MQTT packages: 90/87 mean time: 852552
+Rec/Tot MQTT packages: 105/92 mean time: 652107
+Rec/Tot MQTT packages: 106/92 mean time: 870248
+Rec/Tot MQTT packages: 107/92 mean time: 871872
+Rec/Tot MQTT packages: 123/97 mean time: 667665
+Rec/Tot MQTT packages: 124/97 mean time: 891089
+Rec/Tot MQTT packages: 138/102 mean time: 681835
+Rec/Tot MQTT packages: 139/102 mean time: 683422
+Rec/Tot MQTT packages: 140/102 mean time: 911808
+Rec/Tot MQTT packages: 154/107 mean time: 696742
+Rec/Tot MQTT packages: 155/107 mean time: 698342
+Rec/Tot MQTT packages: 156/107 mean time: 932106
+Rec/Tot MQTT packages: 170/112 mean time: 710951
+Rec/Tot MQTT packages: 171/112 mean time: 712575
+Rec/Tot MQTT packages: 172/112 mean time: 951231
+Rec/Tot MQTT packages: 186/117 mean time: 726169
+Rec/Tot MQTT packages: 186/117 mean time: 726169
+Rec/Tot MQTT packages: 187/117 mean time: 727810
+Rec/Tot MQTT packages: 188/117 mean time: 971149
+Rec/Tot MQTT packages: 189/117 mean time: 972746
+Rec/Tot MQTT packages: 204/122 mean time: 742140
+Rec/Tot MQTT packages: 205/122 mean time: 990301
+Rec/Tot MQTT packages: 206/122 mean time: 991898
+Rec/Tot MQTT packages: 220/127 mean time: 756174
+Rec/Tot MQTT packages: 220/127 mean time: 756174
+Rec/Tot MQTT packages: 221/127 mean time: 757801
+Rec/Tot MQTT packages: 222/127 mean time: 1011366
+Rec/Tot MQTT packages: 222/127 mean time: 1011366
+Rec/Tot MQTT packages: 235/132 mean time: 770420
+Rec/Tot MQTT packages: 236/132 mean time: 772448
+Rec/Tot MQTT packages: 237/132 mean time: 774449
+Rec/Tot MQTT packages: 252/137 mean time: 786611
+Rec/Tot MQTT packages: 252/137 mean time: 786611
+Rec/Tot MQTT packages: 253/137 mean time: 787874
+Rec/Tot MQTT packages: 254/137 mean time: 1051231
+Rec/Tot MQTT packages: 255/137 mean time: 1052818
+Rec/Tot MQTT packages: 269/142 mean time: 802208
+Rec/Tot MQTT packages: 270/142 mean time: 1070395
+Rec/Tot MQTT packages: 271/142 mean time: 1072013
+Rec/Tot MQTT packages: 271/142 mean time: 1072013
+Rec/Tot MQTT packages: 285/147 mean time: 816183
+Rec/Tot MQTT packages: 286/147 mean time: 817806
+Rec/Tot MQTT packages: 287/147 mean time: 1091189
+Rec/Tot MQTT packages: 288/147 mean time: 1092805
+Rec/Tot MQTT packages: 289/147 mean time: 1094465
+Rec/Tot MQTT packages: 290/147 mean time: 1369071
+Rec/Tot MQTT packages: 305/152 mean time: 834625
+Rec/Tot MQTT packages: 306/152 mean time: 835841
+Rec/Tot MQTT packages: 307/152 mean time: 1115221
+Rec/Tot MQTT packages: 307/152 mean time: 1115221
+Rec/Tot MQTT packages: 320/157 mean time: 849224
+Rec/Tot MQTT packages: 321/157 mean time: 850826
+Rec/Tot MQTT packages: 322/157 mean time: 1135441
+Rec/Tot MQTT packages: 322/157 mean time: 1135441
+Rec/Tot MQTT packages: 322/157 mean time: 1135441
+Rec/Tot MQTT packages: 322/157 mean time: 1135441
+Rec/Tot MQTT packages: 322/157 mean time: 1135441
+Rec/Tot MQTT packages: 322/157 mean time: 1135441
+Rec/Tot MQTT packages: 322/157 mean time: 1135441
+Rec/Tot MQTT packages: 322/157 mean time: 1135441
