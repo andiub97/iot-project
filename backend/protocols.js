@@ -48,10 +48,6 @@ const switchEvalTopic = "sensor/change/eval_mode";
 const changeVars = "sensor/change/vars";
 const infoPackages = "sensor/info/packages";
 
-const gps = {
-    lat: process.env.GPS_LAT,
-    lng: process.env.GPS_LONG
-}
 
 // ---------- Functions for MQTT -----------
 init = () => {
@@ -134,15 +130,15 @@ init = () => {
                     throw err;
                 }
                 else {
-                    fs.writeFile('../utils/info_packages_MQTT.txt', data + "Rec/Tot MQTT packages: " + s.rec_tot_packages_count +"\n", (err) => {
-                    // In case of a error throw err.
-                    if (err) throw err;
+                    fs.writeFile('../utils/info_packages_MQTT.txt', data + "Rec/Tot MQTT packages: " + s.rec_tot_packages_count + "\n", (err) => {
+                        // In case of a error throw err.
+                        if (err) throw err;
                     })
                 }
-                });
+            });
         }
     })
-    
+
 }
 
 const switchProtMode = (request, response) => {
@@ -150,7 +146,7 @@ const switchProtMode = (request, response) => {
 
     let prot = request.body.protocol
     console.log(prot);
-    
+
     // 0 == MQTT && 1 == HTTP
     if (prot == 0 || prot == 1) {
         prot_mode = prot
@@ -251,7 +247,7 @@ const httpData = (req, response) => {
     console.log(req.body)
 
     const gps = data.gps
-    
+
     for (const [key, value] of Object.entries(InfluxData.buckets)) {
 
         switch (value) {
@@ -269,13 +265,13 @@ const httpData = (req, response) => {
                 break;
             case "rss": influxManager.writeApi(clientId, gps, value, data.rss)
                 break;
-            case "info_packages":influxManager.writeApi(clientId, gps, value, data.received_http_packet_count + " "+ data.total_http_packet_count)
+            case "info_packages": influxManager.writeApi(clientId, gps, value, data.received_http_packet_count + " " + data.total_http_packet_count)
             default:
                 break;
         }
 
     }
-    
+
     response.status(200).json(data);
 }
 
@@ -354,20 +350,20 @@ const sendAlertMessageTelegram = (req) => {
     }
 }
 
-const infoPackagesHTTP = (req,res) => {
+const infoPackagesHTTP = (req, res) => {
     let s = req.body
-     // Read data from 'info_packages_HTTP.txt' .
-     const read = fs.readFile('../utils/info_packages_HTTP.txt', (err, data) => {
+    // Read data from 'info_packages_HTTP.txt' .
+    const read = fs.readFile('../utils/info_packages_HTTP.txt', (err, data) => {
         if (err) {
             throw err;
         }
         else {
-            fs.writeFile('../utils/info_packages_HTTP.txt', data + "Rec/Tot HTTP packages: " + s.rec_tot_packages_count +"\n", (err) => {
+            fs.writeFile('../utils/info_packages_HTTP.txt', data + "Rec/Tot HTTP packages: " + s.rec_tot_packages_count + "\n", (err) => {
                 // In case of a error throw err.
-            if (err) throw err;
+                if (err) throw err;
             })
         }
-     });
+    });
 }
 
 function sendReq(id, mess) {
