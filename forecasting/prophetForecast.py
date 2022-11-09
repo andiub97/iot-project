@@ -47,7 +47,7 @@ def loadData ():
 
 def calc_forecasting(bucket):
     query = 'from(bucket: "' + bucket + '")' \
-            ' |> range(start: 2022-11-07T00:00:00.00Z, stop: 2022-11-09T18:00:00.00Z)' \
+            ' |> range(start: 2022-11-07T10:00:00.00Z, stop: 2022-11-08T10:00:00.00Z)' \
             ' |> filter(fn: (r) => r["_measurement"] == "val")' \
             ' |> filter(fn: (r) => r["_field"] == "'+bucket+ '")' \
            # ' |> aggregateWindow(every: 1m , fn: mean, createEmpty: false)'\
@@ -72,13 +72,14 @@ def calc_forecasting(bucket):
     m.fit(df)
     # periods specifies the number of time series points you'd like to forecast onto 
     # freq time between points 
-    future = m.make_future_dataframe(periods=60*12, freq= DateOffset(minutes=1))
+    future = m.make_future_dataframe(periods=60*24, freq= DateOffset(minutes=1))
     forecast = m.predict(future)
     # truncate ds to minutes
     forecast['ds'] = forecast.ds.dt.floor('min')
 
     lines = [str(forecast["yhat"][d]) for d in range(len(forecast))]
     print(lines)
+    
     lines = ['val,prediction=yes,clientId=' + str("diubi-esp-32")+",lat=999,lng=999"+ " " + bucket + '=' + str(forecast["yhat"][d])
                                     + ' ' + str(int(time.mktime(forecast['ds'][d].timetuple()))) + "000000000" for d in range(len(forecast))]
     write_client = client.write_api(write_options=WriteOptions(batch_size=1000, flush_interval=10_000,
