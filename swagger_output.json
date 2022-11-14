@@ -5,7 +5,7 @@
     "title": "REST API",
     "description": ""
   },
-  "host": "localhost:8080",
+  "host": "localhost:80",
   "basePath": "/",
   "schemes": [
     "http"
@@ -41,7 +41,7 @@
         }
       }
     },
-    "/switch-mode": {
+    "/switch-prot-mode": {
       "post": {
         "description": "",
         "parameters": [
@@ -52,6 +52,33 @@
               "type": "object",
               "properties": {
                 "protocol": {
+                  "example": "any"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "500": {
+            "description": "Internal Server Error"
+          }
+        }
+      }
+    },
+    "/switch-eval-mode": {
+      "post": {
+        "description": "",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "mode": {
                   "example": "any"
                 }
               }
