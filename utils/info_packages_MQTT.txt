@@ -90,3 +90,4 @@ Rec/Tot MQTT packages: 322/157 mean time: 1135441
 Rec/Tot MQTT packages: 322/157 mean time: 1135441
 Rec/Tot MQTT packages: 322/157 mean time: 1135441
 Rec/Tot MQTT packages: 322/157 mean time: 1135441
+Rec/Tot MQTT packages: 322/157 mean time: 1135441
