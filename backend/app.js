@@ -56,7 +56,7 @@ app.post('/data', prots.httpData)
 
 app.post('/newTelegramUser', prots.getNewUsers)
 
-//app.post('/aqi_alert', prots.sendAlertMessageTelegram)
+app.post('/aqi_alert', prots.sendAlertMessageTelegram)
 
 // listening on http
 app.listen(portHttp, host, () => {
