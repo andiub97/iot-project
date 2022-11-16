@@ -22,13 +22,13 @@
               "type": "object",
               "properties": {
                 "minGas": {
-                  "example": "any"
+                  "example": 0
                 },
                 "maxGas": {
-                  "example": "any"
+                  "example": 0
                 },
                 "sampleFrequency": {
-                  "example": "any"
+                  "example": 0
                 }
               }
             }
@@ -52,7 +52,7 @@
               "type": "object",
               "properties": {
                 "protocol": {
-                  "example": "any"
+                  "example": 0
                 }
               }
             }
@@ -79,7 +79,7 @@
               "type": "object",
               "properties": {
                 "mode": {
-                  "example": "any"
+                  "example": 0
                 }
               }
             }
