@@ -351,7 +351,6 @@ void loop() {
       doc["gps"]["lat"] = preferences.getString("lat");
       doc["gps"]["lng"] = preferences.getString("long");
       doc["rss"] = rssi;
-//      snprintf(doc["temp"], sizeof(doc["temp"]), "%.2f", temp);
       doc["temp"] = temp;
       doc["hum"] = hum;
       doc["gasv"]["gas"] = gas_current_value;
