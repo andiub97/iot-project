@@ -253,12 +253,12 @@ const httpData = (req, response) => {
 
         switch (value) {
             case "temperature":
-                influxManager.writeApi(clientId, gps, value, data.temp)
+                influxManager.writeApi(clientId, gps, value, data.temp.toFixed(2))
                 getOutdoorTemp(gps).then(function (temp) {
                     influxManager.writeApi(clientId, gps, "out_temperature", temp)
                 })
                 break;
-            case "humidity": influxManager.writeApi(clientId, gps, value, data.hum)
+            case "humidity": influxManager.writeApi(clientId, gps, value, data.hum.toFixed(2))
                 break;
             case "gas": influxManager.writeApi(clientId, gps, value, data.gasv.gas)
                 break;
@@ -347,7 +347,7 @@ const sendAlertMessageTelegram = (req) => {
     const list = JSON.parse(data);
     const message = req.body._message.toString()
     console.log(message)
-    console.log(typeof(message))
+    console.log(typeof (message))
     for (i = 0; i < list.length; i++) {
         sendReq(list[i].chat_id, message)
     }
