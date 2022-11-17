@@ -386,14 +386,7 @@ void loop() {
           Serial.println(httpResponseCode);
 
           http.end();
-
         }
-
-
-
-        
-
-
       }
       http.end();
     }
