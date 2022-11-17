@@ -266,6 +266,7 @@ void loop() {
     // New sensors' readings
     hum = dht.readHumidity();
     temp = dht.readTemperature();
+    rssi = WiFi.RSSI(); //checking the signal strength
     //     Check if any reads failed and exit early (to try again).
     if (isnan(temp) || isnan(hum)) {
       Serial.println(F("Failed to read from DHT sensor!"));
@@ -350,8 +351,8 @@ void loop() {
       doc["gps"]["lat"] = preferences.getString("lat");
       doc["gps"]["lng"] = preferences.getString("long");
       doc["rss"] = rssi;
-      snprintf(doc["temp"], sizeof(doc["temp"]), "%.2f", temp);
-      //doc["temp"] = temp;
+//      snprintf(doc["temp"], sizeof(doc["temp"]), "%.2f", temp);
+      doc["temp"] = temp;
       doc["hum"] = hum;
       doc["gasv"]["gas"] = gas_current_value;
 
