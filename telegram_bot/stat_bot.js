@@ -54,7 +54,7 @@ bot.command('buckets', (ctx) => {
         "gas - it provides the mean gas concentration (inverse value from 4096 [low] to 0 [high])\n\n " +
         "rss -  it is the WiFi RSS of selected host\n\n " +
         "aqi - it is the mean AQI on the past 5 iteration\n " +
-        "\n\nIf you want to invoke them, you must put a back slash before and specify the id of the host. The @Andiub's host is diubi-esp-32")
+        "\n\nIf you want to invoke them, you must put a back slash before and specify the id of the host. The @Andiub's host is esp-32")
 })
 
 
